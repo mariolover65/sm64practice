@@ -127,9 +127,9 @@ static u32 sBackwardKnockbackActions[][3] = {
     { ACT_BACKWARD_WATER_KB,       ACT_BACKWARD_WATER_KB,  ACT_BACKWARD_WATER_KB },
 };
 
-static u8 sDisplayingDoorText = FALSE;
-static u8 sJustTeleported = FALSE;
-static u8 sPssSlideStarted = FALSE;
+u8 sDisplayingDoorText = FALSE;
+u8 sJustTeleported = FALSE;
+u8 sPssSlideStarted = FALSE;
 
 /**
  * Returns the type of hat Mario is wearing.

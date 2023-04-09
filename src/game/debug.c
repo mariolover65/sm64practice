@@ -324,8 +324,8 @@ void reset_debug_objectinfo(void) {
     gUnknownWallCount = 0;
     gObjectCounter = 0;
     sDebugStringArrPrinted = FALSE;
-    D_8035FEE2 = 0;
-    D_8035FEE4 = 0;
+    unusedD_8035FEE2 = 0;
+    unusedD_8035FEE4 = 0;
 
     set_print_state_info(gDebugPrintState1, 20, 185, 40, 200, -15);
     set_print_state_info(gDebugPrintState2, 180, 30, 0, 150, 15);

@@ -35,16 +35,14 @@
 #include "pc/pc_main.h"
 #include "pc/configfile.h"
 
+#include "save_state.h"
+#include "practice.h"
+
 #define PLAY_MODE_NORMAL 0
 #define PLAY_MODE_PAUSED 2
 #define PLAY_MODE_CHANGE_AREA 3
 #define PLAY_MODE_CHANGE_LEVEL 4
 #define PLAY_MODE_FRAME_ADVANCE 5
-
-#define WARP_TYPE_NOT_WARPING 0
-#define WARP_TYPE_CHANGE_LEVEL 1
-#define WARP_TYPE_CHANGE_AREA 2
-#define WARP_TYPE_SAME_AREA 3
 
 #define WARP_NODE_F0 0xF0
 #define WARP_NODE_DEATH 0xF1
@@ -180,6 +178,9 @@ u8 unused3[4];
 u8 unused4[2];
 
 extern s16 gMenuMode;
+extern u8 sTransitionColorFadeCount[4];
+extern u16 sTransitionTextureFadeCount[2];
+extern s16 gWarpTransDelay;
 
 void soft_reset(void){
 	if (gCurrLevelNum==1)
@@ -195,6 +196,9 @@ void soft_reset(void){
 	reset_dialog_render_state();
 	gMenuMode = -1;
 	gGlobalTimer = 1;
+	gHudFlash = 0;
+	bzero(sTransitionColorFadeCount,4);
+	bzero(sTransitionTextureFadeCount,4);
 }
 
 u16 level_control_timer(s32 timerOp) {
@@ -416,7 +420,6 @@ void init_mario_after_warp(void) {
     reset_camera(gCurrentArea->camera);
     sWarpDest.type = WARP_TYPE_NOT_WARPING;
     sDelayedWarpOp = WARP_OP_NONE;
-
     switch (marioSpawnType) {
         case MARIO_SPAWN_UNKNOWN_03:
             play_transition(WARP_TRANSITION_FADE_FROM_STAR, 0x10, 0x00, 0x00, 0x00);
@@ -481,6 +484,7 @@ void init_mario_after_warp(void) {
 // used for warps inside one level
 void warp_area(void) {
     if (sWarpDest.type != WARP_TYPE_NOT_WARPING) {
+		gLastWarpDest = sWarpDest;
         if (sWarpDest.type == WARP_TYPE_CHANGE_AREA) {
             level_control_timer(TIMER_CONTROL_HIDE);
             unload_mario_area();
@@ -494,11 +498,16 @@ void warp_area(void) {
 // used for warps between levels
 void warp_level(void) {
     gCurrLevelNum = sWarpDest.levelNum;
-
+	gLastWarpDest = sWarpDest;
+	
     level_control_timer(TIMER_CONTROL_HIDE);
 
     load_area(sWarpDest.areaIdx);
     init_mario_after_warp();
+	
+	if (gCurrPlayingReplay==NULL){
+		init_replay_record(&gPracticeReplay,TRUE);
+	}
 }
 
 void warp_credits(void) {
@@ -978,6 +987,30 @@ void basic_update(UNUSED s16 *arg) {
 
 int gPressedStart = 0;
 
+s32 practice_warp(void) {
+	sWarpDest = gPracticeDest;
+	gPracticeDest.type = WARP_TYPE_NOT_WARPING;
+	sTransitionTimer = 0;
+	sTransitionUpdate = NULL;
+	gMarioState->numCoins = 0;
+	gHudDisplay.coins = 0;
+	gMarioState->health = 0x880;
+	gPracticeWarping = TRUE;
+	gWarpTransDelay = 0;
+	gWarpTransition.isActive = TRUE;
+	gWarpTransition.type = WARP_TRANSITION_FADE_FROM_COLOR;
+	gWarpTransition.time = 16;
+	gWarpTransition.data.red = 255;
+	gWarpTransition.data.green = 255;
+	gWarpTransition.data.blue = 255;
+	set_warp_transition_rgb(255,255,255);
+	sTransitionColorFadeCount[0] = 0;
+	sTransitionColorFadeCount[1] = 0;
+	sTransitionColorFadeCount[2] = 0;
+	sTransitionColorFadeCount[3] = 0;
+	bzero(sTransitionTextureFadeCount,4);
+}
+
 s32 play_mode_normal(void) {
     if (gCurrDemoInput != NULL) {
         print_intro_text();
@@ -1007,6 +1040,10 @@ s32 play_mode_normal(void) {
 
     initiate_painting_warp();
     initiate_delayed_warp();
+	
+	if (gPracticeDest.type!=WARP_TYPE_NOT_WARPING){
+		practice_warp();
+	}
 
     // If either initiate_painting_warp or initiate_delayed_warp initiated a
     // warp, change play mode accordingly.
@@ -1145,6 +1182,9 @@ static s32 play_mode_unused(void) {
 
 s32 update_level(void) {
     s32 changeLevel;
+	
+	s32 practiceLevel = practice_update();
+	if (practiceLevel) return practiceLevel;
 
     switch (sCurrPlayMode) {
         case PLAY_MODE_NORMAL:
@@ -1329,6 +1369,11 @@ s32 lvl_set_current_level(UNUSED s16 arg0, s32 levelNum) {
     if (gDebugLevelSelect != 0 && gShowProfiler == 0) {
         return 0;
     }
+	
+	if (gNoStarSelectWarp!=0) {
+		gNoStarSelectWarp = FALSE;
+		return 0;
+	}
 
     return 1;
 }

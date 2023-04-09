@@ -23,12 +23,13 @@ static OSMesgQueue sSoundMesgQueue;
 static OSMesg sSoundMesgBuf[1];
 static struct VblankHandler sSoundVblankHandler;
 
-static u8 D_8032C6C0 = 0;
-static u8 D_8032C6C4 = 0;
-static u16 sCurrentMusic = MUSIC_NONE;
-static u16 sCurrentShellMusic = MUSIC_NONE;
-static u16 sCurrentCapMusic = MUSIC_NONE;
-static u8 sPlayingInfiniteStairs = FALSE;
+u8 sSoundFlags = 0;
+u8 sBackgroundSoundDisabled = 0;
+u16 sCurrentMusic = MUSIC_NONE;
+u16 sCurrentShellMusic = MUSIC_NONE;
+u16 sCurrentCapMusic = MUSIC_NONE;
+u8 sPlayingInfiniteStairs = FALSE;
+u8 gUnbreakMusic = FALSE;
 static u8 unused8032C6D8[16] = { 0 };
 static s16 sSoundMenuModeToSoundMode[] = { SOUND_MODE_STEREO, SOUND_MODE_MONO, SOUND_MODE_HEADSET };
 // Only the 20th array element is used.
@@ -75,45 +76,45 @@ static s8 paintingEjectSoundPlayed = FALSE;
 void play_menu_sounds_extra(int a, void *b);
 
 void reset_volume(void) {
-    D_8032C6C0 = 0;
+    sSoundFlags = 0;
 }
 
 void lower_background_noise(s32 a) // Soften volume
 {
     switch (a) {
-        case 1:
+        case SOUND_FLAG_SILENT:
             set_sound_disabled(TRUE);
             break;
-        case 2:
+        case SOUND_FLAG_QUIET:
             func_8031FFB4(SEQ_PLAYER_LEVEL, 60, 40); // soften music
             break;
     }
-    D_8032C6C0 |= a;
+    sSoundFlags |= a;
 }
 
 void raise_background_noise(s32 a) // harden volume
 {
     switch (a) {
-        case 1:
+        case SOUND_FLAG_SILENT:
             set_sound_disabled(FALSE);
             break;
-        case 2:
+        case SOUND_FLAG_QUIET:
             sequence_player_unlower(SEQ_PLAYER_LEVEL, 60);
             break;
     }
-    D_8032C6C0 &= ~a;
+    sSoundFlags &= ~a;
 }
 
 void disable_background_sound(void) {
-    if (D_8032C6C4 == 0) {
-        D_8032C6C4 = 1;
+    if (sBackgroundSoundDisabled == 0) {
+        sBackgroundSoundDisabled = 1;
         sound_banks_disable(2, 0x037A);
     }
 }
 
 void enable_background_sound(void) {
-    if (D_8032C6C4 == 1) {
-        D_8032C6C4 = 0;
+    if (sBackgroundSoundDisabled == 1) {
+        sBackgroundSoundDisabled = 0;
         sound_banks_enable(2, 0x037A);
     }
 }
@@ -214,6 +215,7 @@ void set_background_music(u16 a, u16 seqArgs, s16 fadeTimer) {
 
 void fadeout_music(s16 fadeOutTime) {
     func_803210D4(fadeOutTime);
+	gUnbreakMusic = TRUE;
     sCurrentMusic = MUSIC_NONE;
     sCurrentShellMusic = MUSIC_NONE;
     sCurrentCapMusic = MUSIC_NONE;

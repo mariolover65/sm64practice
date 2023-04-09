@@ -5084,11 +5084,11 @@ void clear_cutscene_vars(UNUSED struct Camera *c) {
     s32 i;
 
     for (i = 0; i < 10; i++) {
-        sCutsceneVars[i].unused1 = 0;
+        //sCutsceneVars[i].unused1 = 0;
         vec3f_set(sCutsceneVars[i].point, 0.f, 0.f, 0.f);
-        vec3f_set(sCutsceneVars[i].unusedPoint, 0.f, 0.f, 0.f);
+        //vec3f_set(sCutsceneVars[i].unusedPoint, 0.f, 0.f, 0.f);
         vec3s_set(sCutsceneVars[i].angle, 0, 0, 0);
-        sCutsceneVars[i].unused2 = 0;
+        //sCutsceneVars[i].unused2 = 0;
     }
 }
 

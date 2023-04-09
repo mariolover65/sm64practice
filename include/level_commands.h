@@ -22,6 +22,7 @@
 #define VAR_CURR_ACT_NUM        2
 #define VAR_CURR_LEVEL_NUM      3
 #define VAR_CURR_AREA_INDEX     4
+#define VAR_PRESSED_START       5
 
 #define WARP_CHECKPOINT 0x80
 #define WARP_NO_CHECKPOINT 0x00

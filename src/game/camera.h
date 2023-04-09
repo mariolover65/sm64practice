@@ -520,12 +520,12 @@ struct CameraStoredInfo
 struct CutsceneVariable
 {
     /// Perhaps an index
-    s32 unused1;
+    //s32 unused1;
     Vec3f point;
-    Vec3f unusedPoint;
+    //Vec3f unusedPoint;
     Vec3s angle;
     /// Perhaps a boolean or an extra angle
-    s16 unused2;
+    //s16 unused2;
 };
 
 /**

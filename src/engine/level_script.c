@@ -23,6 +23,7 @@
 #include "surface_collision.h"
 #include "surface_load.h"
 #include "level_table.h"
+#include "level_commands.h"
 
 #define CMD_GET(type, offset) (*(type *) (CMD_PROCESS_OFFSET(offset) + (u8 *) sCurrentCmd))
 
@@ -58,28 +59,28 @@ static s32 eval_script_op(s8 op, s32 arg) {
     s32 result = 0;
 
     switch (op) {
-        case 0:
+        case OP_AND:
             result = sRegister & arg;
             break;
-        case 1:
+        case OP_NAND:
             result = !(sRegister & arg);
             break;
-        case 2:
+        case OP_EQ:
             result = sRegister == arg;
             break;
-        case 3:
+        case OP_NEQ:
             result = sRegister != arg;
             break;
-        case 4:
+        case OP_LT:
             result = sRegister < arg;
             break;
-        case 5:
+        case OP_LEQ:
             result = sRegister <= arg;
             break;
-        case 6:
+        case OP_GT:
             result = sRegister > arg;
             break;
-        case 7:
+        case OP_GEQ:
             result = sRegister >= arg;
             break;
     }
@@ -714,45 +715,45 @@ static void level_cmd_38(void) {
 extern int gPressedStart;
 
 static void level_cmd_get_or_set_var(void) {
-    if (CMD_GET(u8, 2) == 0) {
+    if (CMD_GET(u8, 2) == OP_SET) {
         switch (CMD_GET(u8, 3)) {
-            case 0:
+            case VAR_CURR_SAVE_FILE_NUM:
                 gCurrSaveFileNum = sRegister;
                 break;
-            case 1:
+            case VAR_CURR_COURSE_NUM:
                 gCurrCourseNum = sRegister;
                 break;
-            case 2:
+            case VAR_CURR_ACT_NUM:
                 gCurrActNum = sRegister;
                 break;
-            case 3:
+            case VAR_CURR_LEVEL_NUM:
                 gCurrLevelNum = sRegister;
                 break;
-            case 4:
+            case VAR_CURR_AREA_INDEX:
                 gCurrAreaIndex = sRegister;
                 break;
-            case 5: 
+            case VAR_PRESSED_START: 
                 gPressedStart = sRegister; 
                 break;
         }
     } else {
         switch (CMD_GET(u8, 3)) {
-            case 0:
+            case VAR_CURR_SAVE_FILE_NUM:
                 sRegister = gCurrSaveFileNum;
                 break;
-            case 1:
+            case VAR_CURR_COURSE_NUM:
                 sRegister = gCurrCourseNum;
                 break;
-            case 2:
+            case VAR_CURR_ACT_NUM:
                 sRegister = gCurrActNum;
                 break;
-            case 3:
+            case VAR_CURR_LEVEL_NUM:
                 sRegister = gCurrLevelNum;
                 break;
-            case 4:
+            case VAR_CURR_AREA_INDEX:
                 sRegister = gCurrAreaIndex;
                 break;
-            case 5: 
+            case VAR_PRESSED_START:
                 sRegister = gPressedStart; 
                 break;
         }

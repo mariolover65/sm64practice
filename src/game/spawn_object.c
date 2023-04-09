@@ -13,6 +13,8 @@
 #include "spawn_object.h"
 #include "types.h"
 
+#include <stdio.h>
+
 /**
  * An unused linked list struct that seems to have been replaced by ObjectNode.
  */
@@ -218,6 +220,7 @@ struct Object *allocate_object(struct ObjectNode *objList) {
         // If no unimportant object exists, then the object pool is exhausted.
         if (unimportantObj == NULL) {
             // We've met with a terrible fate.
+			printf("Ran out of memory! Cannot allocate object!\n");
             while (TRUE) {
             }
         } else {

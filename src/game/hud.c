@@ -22,13 +22,6 @@
  * cannon reticle, and the unused keys.
  **/
 
-struct PowerMeterHUD {
-    s8 animation;
-    s16 x;
-    s16 y;
-    f32 unused;
-};
-
 struct UnusedHUDStruct {
     u32 unused1;
     u16 unused2;
@@ -41,9 +34,9 @@ struct CameraHUD {
 
 // Stores health segmented value defined by numHealthWedges
 // When the HUD is rendered this value is 8, full health.
-static s16 sPowerMeterStoredHealth;
+s16 sPowerMeterStoredHealth;
 
-static struct PowerMeterHUD sPowerMeterHUD = {
+struct PowerMeterHUD sPowerMeterHUD = {
     POWER_METER_HIDDEN,
     140,
     166,

@@ -165,6 +165,8 @@ Gfx *geo_switch_anim_state(s32 callContext, struct GraphNode *node) {
     return NULL;
 }
 
+extern s16 sPrevCheckMarioRoom;
+
 //! @bug Same issue as geo_switch_anim_state.
 #ifdef AVOID_UB
 Gfx *geo_switch_area(s32 callContext, struct GraphNode *node, UNUSED void *context) {
@@ -187,7 +189,14 @@ Gfx *geo_switch_area(s32 callContext, struct GraphNode *node) {
 
             if (sp20) {
                 gMarioCurrentRoom = sp20->room;
-                sp26 = sp20->room - 1;
+                
+				// if loading state onto a surface object
+				if (gMarioCurrentRoom==0){
+					sp26 = sPrevCheckMarioRoom - 1;
+				} else {
+					// default behavior
+					sp26 = sp20->room - 1;
+				}
                 print_debug_top_down_objectinfo("areainfo %d", sp20->room);
 
                 if (sp26 >= 0) {

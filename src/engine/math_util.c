@@ -18,7 +18,7 @@ int gSplineState;
 #pragma GCC diagnostic ignored "-Wreturn-local-addr"
 
 /// Copy vector 'src' to 'dest'
-void *vec3f_copy(Vec3f dest, Vec3f src) {
+void *vec3f_copy(Vec3f dest, const Vec3f src) {
     dest[0] = src[0];
     dest[1] = src[1];
     dest[2] = src[2];
@@ -59,7 +59,7 @@ void *vec3f_mul(Vec3f dest, f32 a)
 }
 
 /// Copy vector src to dest
-void *vec3s_copy(Vec3s dest, Vec3s src) {
+void *vec3s_copy(Vec3s dest, const Vec3s src) {
     dest[0] = src[0];
     dest[1] = src[1];
     dest[2] = src[2];

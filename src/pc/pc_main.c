@@ -40,6 +40,9 @@
 #include "pc/discord/discordrpc.h"
 #endif
 
+#include "game/save_state.h"
+#include "game/practice.h"
+
 OSMesg D_80339BEC;
 OSMesgQueue gSIEventMesgQueue;
 
@@ -245,11 +248,16 @@ void main_func(void) {
     if (audio_api == NULL) {
         audio_api = &audio_null;
     }
+	
+	printf("Object size: %lld\n",sizeof(struct Object));
+	printf("SaveState size: %lld\n",sizeof(SaveState));
 
     audio_init();
     sound_init();
 
     thread5_game_loop(NULL);
+	
+	practice_init();
 
     inited = true;
 

@@ -42,6 +42,8 @@
 
 #define ANGLER_NP_ENTER_SCANCODE 284
 #define ANGLER_NP_DOT_SCANCODE 83
+#define ANGLER_NP_PLUS_SCANCODE 78
+#define ANGLER_NP_MINUS_SCANCODE 74
 
 #define ANGLER_UP_SCANCODE 328
 #define ANGLER_LEFT_SCANCODE 331
@@ -167,16 +169,21 @@ static void update_angles(void) {
 		add_upright();
 	}
 	
-	if (angler_keys_array[ANGLER_A_SCANCODE]){
+	if (angler_keys_array[ANGLER_A_SCANCODE]&&
+		angler_keys_array[ANGLER_F_SCANCODE]){
+		if (!angler_keys_array[ANGLER_S_SCANCODE])
+			add_up();
+	} else if (angler_keys_array[ANGLER_A_SCANCODE]){
 		add_left();
-	}
-	if (angler_keys_array[ANGLER_F_SCANCODE]){
+	} else if (angler_keys_array[ANGLER_F_SCANCODE]){
 		add_right();
 	}
-	if (angler_keys_array[ANGLER_S_SCANCODE]){
+	if (angler_keys_array[ANGLER_S_SCANCODE]&&
+		angler_keys_array[ANGLER_D_SCANCODE]){
 		add_down();
-	}
-	if (angler_keys_array[ANGLER_D_SCANCODE]){
+	} else if (angler_keys_array[ANGLER_S_SCANCODE]){
+		add_down();
+	} else if (angler_keys_array[ANGLER_D_SCANCODE]){
 		add_up();
 	}
 	
@@ -198,17 +205,9 @@ static void update_angles(void) {
 		accY /= mag;
 	}
 	
-	if (angler_keys_array[ANGLER_NP_DIVIDE_SCANCODE]&&!angler_keys_array[ANGLER_Z_SCANCODE]){
-		accX = 0.0f;
-		accY = 1.0f;
-		accCount = 1;
-	} else if (angler_keys_array[ANGLER_NP_TIMES_SCANCODE]){
+	if (angler_keys_array[ANGLER_NP_MINUS_SCANCODE]){
 		accX = 1.0f;
 		accY = 0.0f;
-		accCount = 1;
-	} else if (angler_keys_array[ANGLER_X_SCANCODE]){
-		accX = 0.0f;
-		accY = -1.0f;
 		accCount = 1;
 	} else if (angler_keys_array[ANGLER_Z_SCANCODE]){
 		accX = -1.0f;
