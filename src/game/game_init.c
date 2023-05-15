@@ -27,6 +27,7 @@
 #endif
 
 #include "replay.h"
+#include "practice.h"
 
 // FIXME: I'm not sure all of these variables belong in this file, but I don't
 // know of a good way to split them
@@ -309,7 +310,10 @@ void display_and_vsync(void) {
     if (++frameBufferIndex == 3) {
         frameBufferIndex = 0;
     }
-    gGlobalTimer++;
+	if (!gRenderPracticeMenu&&!gFrameAdvance){
+		++gGlobalTimer;
+		++gSectionTimer;
+	}
 }
 
 // this function records distinct inputs over a 255-frame interval to RAM locations and was likely
@@ -449,6 +453,16 @@ void run_demo_inputs(void) {
     }
 }
 
+void copy_to_player_3(void){
+	gPlayer3Controller->rawStickX = gPlayer1Controller->rawStickX;
+	gPlayer3Controller->rawStickY = gPlayer1Controller->rawStickY;
+	gPlayer3Controller->stickX = gPlayer1Controller->stickX;
+	gPlayer3Controller->stickY = gPlayer1Controller->stickY;
+	gPlayer3Controller->stickMag = gPlayer1Controller->stickMag;
+	gPlayer3Controller->buttonPressed = gPlayer1Controller->buttonPressed;
+	gPlayer3Controller->buttonDown = gPlayer1Controller->buttonDown;
+}
+
 // update the controller struct with available inputs if present.
 void read_controller_inputs(void) {
     s32 i;
@@ -493,13 +507,10 @@ void read_controller_inputs(void) {
     // For some reason, player 1's inputs are copied to player 3's port. This
     // potentially may have been a way the developers "recorded" the inputs
     // for demos, despite record_demo existing.
-    gPlayer3Controller->rawStickX = gPlayer1Controller->rawStickX;
-    gPlayer3Controller->rawStickY = gPlayer1Controller->rawStickY;
-    gPlayer3Controller->stickX = gPlayer1Controller->stickX;
-    gPlayer3Controller->stickY = gPlayer1Controller->stickY;
-    gPlayer3Controller->stickMag = gPlayer1Controller->stickMag;
-    gPlayer3Controller->buttonPressed = gPlayer1Controller->buttonPressed;
-    gPlayer3Controller->buttonDown = gPlayer1Controller->buttonDown;
+	
+	if (!gRenderPracticeMenu&&!gFrameAdvance){
+		copy_to_player_3();
+	}
 	
 	if (gCurrRecordingReplay){
 		add_frame();

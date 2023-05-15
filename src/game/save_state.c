@@ -10,6 +10,7 @@
 #include "audio/internal.h"
 #include "area.h"
 #include "mario_misc.h"
+#include "paintings.h"
 #include "practice.h"
 
 #include <string.h>
@@ -94,6 +95,10 @@ extern u8 sPlayingInfiniteStairs;
 extern u8 sSoundFlags;
 extern u8 sBackgroundSoundDisabled;
 extern u8 gUnbreakMusic;
+
+extern s32 gCourseDoneMenuTimer;
+extern s32 gCourseCompleteCoins;
+extern s8 gCourseCompleteCoinsEqual;
 
 extern struct SaveBuffer gSaveBuffer;
 
@@ -215,6 +220,7 @@ void save_all_objects(ObjectState* objState){
 	objState->marioPlatform = gMarioPlatform;
 	memcpy(&objState->doorAdjacentRooms[0],&gDoorAdjacentRooms[0][0],sizeof(s8)*120);
 	save_area_data(&objState->areaData);
+	objState->lastButtons = gLastButtons;
 }
 
 void save_camera_state(CameraState* camState){
@@ -324,10 +330,19 @@ void save_level_state(LevelState* levelState){
 	levelState->displayingDoorText = sDisplayingDoorText;
 	levelState->justTeleported = sJustTeleported;
 	levelState->warpCheckpointIsActive = sWarpCheckpointIsActive;
+	levelState->dddPaintingStatus = gDddPaintingStatus;
 }
 
-void save_level_init_state(LevelInitState* initState){
-	initState->loc = gLastWarpDest;
+void save_level_init_state(LevelInitState* initState,struct WarpDest* warpSave){
+	if (warpSave!=NULL){
+		initState->loc = *warpSave;
+	} else {
+		initState->loc.type = WARP_TYPE_CHANGE_LEVEL;
+		initState->loc.levelNum = gCurrLevelNum;
+		initState->loc.areaIdx = gCurrAreaIndex;
+		initState->loc.nodeId = 0xA;
+		initState->loc.arg = 0;
+	}
 	
 	initState->currSaveFileNum = gCurrSaveFileNum;
 	initState->saveBuffer = gSaveBuffer;
@@ -373,6 +388,9 @@ void save_dialog_state(DialogState* dialogState){
 	dialogState->lastDialogResponse = gLastDialogResponse;
 	dialogState->menuHoldKeyIndex = gMenuHoldKeyIndex;
 	dialogState->menuHoldKeyTimer = gMenuHoldKeyTimer;
+	dialogState->courseDoneMenuTimer = gCourseDoneMenuTimer;
+	dialogState->courseCompleteCoins = gCourseCompleteCoins;
+	dialogState->courseCompleteCoinsEqual = gCourseCompleteCoinsEqual;
 }
 
 void save_sound_state(SoundState* soundState){
@@ -386,16 +404,21 @@ void save_sound_state(SoundState* soundState){
 	soundState->musicParam2 = gCurrentArea->musicParam2;
 }
 
+void save_practice_state(PracticeState* practiceState){
+	practiceState->sectionTimer = gSectionTimer;
+	practiceState->sectionTimerResult = gSectionTimerResult;
+}
+
 void save_state(SaveState* state){
 	save_all_objects(&state->objState);
-	save_level_init_state(&state->initState);
+	save_level_init_state(&state->initState,NULL);
 	save_level_state(&state->levelState);
 	save_dialog_state(&state->dialogState);
 	save_camera_state(&state->camState);
 	save_sound_state(&state->soundState);
+	save_practice_state(&state->practiceState);
 	gHasStateSaved = TRUE;
 }
-
 
 void load_all_objects(const ObjectState* objState){
 	memcpy(&gObjectPool[0],&objState->objectPoolCopy[0],sizeof(struct Object)*OBJECT_POOL_CAPACITY);
@@ -416,6 +439,9 @@ void load_all_objects(const ObjectState* objState){
 	gMarioPlatform = objState->marioPlatform;
 	load_area_data(&objState->areaData);
 	memcpy(&gDoorAdjacentRooms[0][0],&objState->doorAdjacentRooms[0],sizeof(s8)*120);
+	gLastButtons = objState->lastButtons;
+	gPlayer1Controller->buttonPressed = gPlayer1Controller->buttonDown & (~gLastButtons);
+	copy_to_player_3();
 }
 
 void load_camera_state(const CameraState* camState){
@@ -503,7 +529,10 @@ void load_level_state(const LevelState* levelState){
 	sCurrPlayMode = levelState->currPlayMode;
 	gMenuMode = levelState->menuMode;
 	sTransitionTimer = levelState->transitionTimer;
+	
+	// TODO: serialize this better
 	sTransitionUpdate = levelState->transitionUpdate;
+	
 	gCurrCreditsEntry = levelState->currCreditsEntry;
 	sTimerRunning = levelState->timerRunning;
 	sWarpCheckpointIsActive = levelState->warpCheckpointIsActive;
@@ -525,6 +554,7 @@ void load_level_state(const LevelState* levelState){
 	
 	sDisplayingDoorText = levelState->displayingDoorText;
 	sJustTeleported = levelState->justTeleported;
+	gDddPaintingStatus = levelState->dddPaintingStatus;
 }
 
 void load_level_init_state(const LevelInitState* initState){
@@ -573,6 +603,9 @@ void load_dialog_state(const DialogState* dialogState){
 	gLastDialogResponse = dialogState->lastDialogResponse;
 	gMenuHoldKeyIndex = dialogState->menuHoldKeyIndex;
 	gMenuHoldKeyTimer = dialogState->menuHoldKeyTimer;
+	gCourseDoneMenuTimer = dialogState->courseDoneMenuTimer;
+	gCourseCompleteCoins = dialogState->courseCompleteCoins;
+	gCourseCompleteCoinsEqual = dialogState->courseCompleteCoinsEqual;
 }
 
 static void apply_sound_flags(const SoundState* state){
@@ -610,6 +643,11 @@ void load_sound_state(const SoundState* soundState){
 	apply_sound_flags(soundState);
 }
 
+void load_practice_state(const PracticeState* practiceState){
+	gSectionTimer = practiceState->sectionTimer;
+	gSectionTimerResult = practiceState->sectionTimerResult;
+}
+
 void load_state(const SaveState* state){
 	load_all_objects(&state->objState);
 	load_level_init_state(&state->initState);
@@ -617,6 +655,7 @@ void load_state(const SaveState* state){
 	load_dialog_state(&state->dialogState);
 	load_camera_state(&state->camState);
 	load_sound_state(&state->soundState);
+	load_practice_state(&state->practiceState);
 }
 
 u32 get_state_size(const SaveState* state){

@@ -18,6 +18,8 @@
 #include "bettercamera.h"
 #endif
 
+#include "practice.h"
+
 void play_flip_sounds(struct MarioState *m, s16 frame1, s16 frame2, s16 frame3) {
     s32 animFrame = m->marioObj->header.gfx.unk38.animFrame;
     if (animFrame == frame1 || animFrame == frame2 || animFrame == frame3) {
@@ -1124,6 +1126,9 @@ u32 common_air_knockback_step(struct MarioState *m, u32 landAction, u32 hardFall
 s32 check_wall_kick(struct MarioState *m) {
     if ((m->input & INPUT_A_PRESSED) && m->wallKickTimer != 0 && m->prevAction == ACT_AIR_HIT_WALL) {
         m->faceAngle[1] += 0x8000;
+		gWallkickFrame = 6-m->wallKickTimer;
+		gWallkickTimer = 30;
+		timer_freeze();
         return set_mario_action(m, ACT_WALL_KICK_AIR, 0);
     }
 
@@ -1287,10 +1292,14 @@ s32 act_air_hit_wall(struct MarioState *m) {
     if (m->heldObj != NULL) {
         mario_drop_held_object(m);
     }
+	
+	timer_freeze();
 
     if (++(m->actionTimer) <= 2) {
         if (m->input & INPUT_A_PRESSED) {
             m->vel[1] = 52.0f;
+			gWallkickFrame = 1;
+			gWallkickTimer = 30;
             m->faceAngle[1] += 0x8000;
             return set_mario_action(m, ACT_WALL_KICK_AIR, 0);
         }

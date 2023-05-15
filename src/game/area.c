@@ -24,6 +24,8 @@
 
 #include "gfx_dimensions.h"
 
+#include "practice.h"
+
 struct SpawnInfo gPlayerSpawnInfos[1];
 struct GraphNode *D_8033A160[0x100];
 struct Area gAreaData[8];
@@ -368,7 +370,11 @@ void play_transition_after_delay(s16 transType, s16 time, u8 red, u8 green, u8 b
     play_transition(transType, time, red, green, blue);
 }
 
+static u8 sOpenPracticeMenuNextFrame = 0;
+
 void render_game(void) {
+	set_text_color(255,255,255,255);
+	
     if (gCurrentArea != NULL && !gWarpTransition.pauseRendering) {
         geo_process_root(gCurrentArea->unk04, D_8032CE74, D_8032CE78, gFBSetColor);
 
@@ -384,7 +390,12 @@ void render_game(void) {
         print_displaying_credits_entry();
         gDPSetScissor(gDisplayListHead++, G_SC_NON_INTERLACE, 0, BORDER_HEIGHT, SCREEN_WIDTH,
                       SCREEN_HEIGHT - BORDER_HEIGHT);
-        gPauseScreenMode = render_menus_and_dialogs();
+		
+		if (gPauseScreenMode==0){
+			gPauseScreenMode = render_menus_and_dialogs();
+		} else if (gPauseScreenMode!=0&&!gFrameAdvance){
+			gPauseScreenMode = 0;
+		}
 
         if (gPauseScreenMode != 0) {
             gSaveOptSelectIndex = gPauseScreenMode;
@@ -408,7 +419,8 @@ void render_game(void) {
                     }
                 }
             } else {
-                gWarpTransDelay--;
+				if (!gRenderPracticeMenu)
+					gWarpTransDelay--;
             }
         }
     } else {
@@ -419,6 +431,27 @@ void render_game(void) {
             clear_frame_buffer(gWarpTransFBSetColor);
         }
     }
+	
+	if (sOpenPracticeMenuNextFrame){
+		gRenderPracticeMenu = TRUE;
+		sOpenPracticeMenuNextFrame = FALSE;
+	}
+	
+	if ((gPlayer1Controller->buttonPressed & D_JPAD) && !gRenderPracticeMenu){
+		sOpenPracticeMenuNextFrame = TRUE;
+	}
+	
+	if (gRenderPracticeMenu){
+		if ((gPlayer1Controller->buttonPressed & B_BUTTON)){
+			gRenderPracticeMenu = FALSE;
+		}
+	}
+	
+	render_practice_info();
+	
+	if (gRenderPracticeMenu){
+		render_practice_menu();
+	}
 
     D_8032CE74 = NULL;
     D_8032CE78 = 0;

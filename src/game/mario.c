@@ -38,6 +38,8 @@
 #include "bettercamera.h"
 #endif
 
+#include "practice.h"
+
 u32 unused80339F10;
 s8 filler80339F1C[20];
 
@@ -1733,30 +1735,39 @@ s32 execute_mario_action(UNUSED struct Object *o) {
             switch (gMarioState->action & ACT_GROUP_MASK) {
                 case ACT_GROUP_STATIONARY:
                     inLoop = mario_execute_stationary_action(gMarioState);
+					gHeightLock = gMarioState->pos[1];
                     break;
 
                 case ACT_GROUP_MOVING:
                     inLoop = mario_execute_moving_action(gMarioState);
+					gHeightLock = gMarioState->pos[1];
                     break;
 
                 case ACT_GROUP_AIRBORNE:
                     inLoop = mario_execute_airborne_action(gMarioState);
+					if (gMarioState->pos[1]>gHeightLock){
+						gHeightLock = gMarioState->pos[1];
+					}
                     break;
 
                 case ACT_GROUP_SUBMERGED:
                     inLoop = mario_execute_submerged_action(gMarioState);
+					gHeightLock = gMarioState->pos[1];
                     break;
 
                 case ACT_GROUP_CUTSCENE:
                     inLoop = mario_execute_cutscene_action(gMarioState);
+					gHeightLock = gMarioState->pos[1];
                     break;
 
                 case ACT_GROUP_AUTOMATIC:
                     inLoop = mario_execute_automatic_action(gMarioState);
+					gHeightLock = gMarioState->pos[1];
                     break;
 
                 case ACT_GROUP_OBJECT:
                     inLoop = mario_execute_object_action(gMarioState);
+					gHeightLock = gMarioState->pos[1];
                     break;
             }
         }

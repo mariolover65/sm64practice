@@ -9,6 +9,8 @@
 #include "interaction.h"
 #include "mario_step.h"
 
+#include "practice.h"
+
 static s16 sMovingSandSpeeds[] = { 12, 8, 4, 0 };
 
 struct Surface gWaterSurfacePseudoFloor = {
@@ -493,6 +495,7 @@ s32 perform_air_quarter_step(struct MarioState *m, Vec3f intendedPos, u32 stepAr
 
         if (wallDYaw < -0x6000 || wallDYaw > 0x6000) {
             m->flags |= MARIO_UNKNOWN_30;
+			gWallkickAngle = wallDYaw;
             return AIR_STEP_HIT_WALL;
         }
     }

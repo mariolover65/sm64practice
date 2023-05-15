@@ -14,6 +14,8 @@
 #include "thread6.h"
 #include "pc/configfile.h"
 
+#include "practice.h"
+
 struct LandingAction {
     s16 numFrames;
     s16 unk02;
@@ -1463,6 +1465,7 @@ s32 act_crouch_slide(struct MarioState *m) {
         m->actionTimer++;
         if (m->input & INPUT_A_PRESSED) {
             if (m->forwardVel > 10.0f) {
+				timer_freeze();
                 return set_jumping_action(m, ACT_LONG_JUMP, 0);
             }
         }
@@ -1852,6 +1855,8 @@ s32 act_long_jump_land(struct MarioState *m) {
     }
 
     if (common_landing_cancels(m, &sLongJumpLandAction, set_jumping_action)) {
+		if (m->input & INPUT_A_PRESSED)
+			timer_freeze();
         return TRUE;
     }
 

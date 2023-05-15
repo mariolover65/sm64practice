@@ -71,4 +71,6 @@ void rendering_init(void);
 void config_gfx_pool(void);
 void display_and_vsync(void);
 
+void copy_to_player_3(void);
+
 #endif // GAME_INIT_H

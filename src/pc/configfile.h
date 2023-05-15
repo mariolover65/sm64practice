@@ -1,6 +1,7 @@
 #ifndef CONFIGFILE_H
 #define CONFIGFILE_H
 
+#include <PR/ultratypes.h>
 #include <stdbool.h>
 
 #define CONFIGFILE_DEFAULT "sm64config.txt"
@@ -62,6 +63,14 @@ extern bool         configNonstop;
 #ifdef DISCORDRPC
 extern bool         configDiscordRPC;
 #endif
+
+extern bool configShowPos;
+extern bool configShowVel;
+extern bool configShowMaxHeight;
+extern bool configShowWallkickFrame;
+extern bool configShowWallkickAngle;
+
+extern u32 configSectionTimerType;
 
 void configfile_load(const char *filename);
 void configfile_save(const char *filename);

@@ -25,6 +25,8 @@
 #include "level_table.h"
 #include "level_commands.h"
 
+#include "game/practice.h"
+
 #define CMD_GET(type, offset) (*(type *) (CMD_PROCESS_OFFSET(offset) + (u8 *) sCurrentCmd))
 
 // These are equal
@@ -43,8 +45,8 @@ static uintptr_t sStack[32];
 
 static struct AllocOnlyPool *sLevelPool = NULL;
 
-static u16 sDelayFrames = 0;
-static u16 sDelayFrames2 = 0;
+u16 sDelayFrames = 0;
+u16 sDelayFrames2 = 0;
 
 static s16 sCurrAreaIndex = -1;
 
@@ -861,19 +863,53 @@ static void (*LevelScriptJumpTable[])(void) = {
     /*3E*/ level_cmd_cleardemoptr,
 };
 
+static void run_level_script(void){
+	gLastButtons = gPlayer1Controller->buttonDown;
+	while (sScriptStatus == SCRIPT_RUNNING) {
+        LevelScriptJumpTable[sCurrentCmd->type]();
+    }
+}
+
 struct LevelCommand *level_script_execute(struct LevelCommand *cmd) {
     sScriptStatus = SCRIPT_RUNNING;
     sCurrentCmd = cmd;
+	u8 advanced = FALSE;
+	
+	practice_update();
+	
+	if (gPlayer1Controller->buttonPressed & L_JPAD){
+		gFrameAdvance = !gFrameAdvance;
+	}
 
-    while (sScriptStatus == SCRIPT_RUNNING) {
-        LevelScriptJumpTable[sCurrentCmd->type]();
-    }
-
+	if (!gRenderPracticeMenu&&!gFrameAdvance){
+		run_level_script();
+	} else if (gFrameAdvance && !gRenderPracticeMenu){
+		if (gPlayer1Controller->buttonPressed & L_TRIG){
+			// copy last frames inputs
+			gPlayer1Controller->buttonPressed = gPlayer1Controller->buttonDown & (~gLastButtons);
+			copy_to_player_3();
+			
+			// run one update
+			run_level_script();
+			advanced = TRUE;
+		}
+	}
+	
+	if (advanced){
+		gFrameAdvance = FALSE;
+	}
     profiler_log_thread5_time(LEVEL_SCRIPT_EXECUTE);
     init_render_image();
     render_game();
     end_master_display_list();
     alloc_display_list(0);
+	
+	if (advanced){
+		// frame advanced this frame so update timers
+		gFrameAdvance = TRUE;
+		++gGlobalTimer;
+		++gSectionTimer;
+	}
 
     return sCurrentCmd;
 }

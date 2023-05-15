@@ -13,11 +13,15 @@
 #include "segment2.h"
 #include "sm64.h"
 
+#include "practice.h"
+
 u8 sTransitionColorFadeCount[4] = { 0 };
 u16 sTransitionTextureFadeCount[2] = { 0 };
 
 s32 set_and_reset_transition_fade_timer(s8 fadeTimer, u8 transTime) {
     s32 reset = FALSE;
+	
+	if (gRenderPracticeMenu||gFrameAdvance) return FALSE;
 
     sTransitionColorFadeCount[fadeTimer]++;
 

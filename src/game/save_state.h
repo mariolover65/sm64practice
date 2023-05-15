@@ -91,6 +91,7 @@ typedef struct {
 	AreaData areaData;
 	u8 objectMemoryPoolData[0x800];
 	s8 doorAdjacentRooms[120];
+	u32 lastButtons;
 } ObjectState;
 
 // misc level state
@@ -140,6 +141,7 @@ typedef struct {
 	u8 displayingDoorText;
 	u8 justTeleported;
 	s8 warpCheckpointIsActive;
+	s8 dddPaintingStatus;
 } LevelState;
 
 typedef struct {
@@ -186,6 +188,9 @@ typedef struct {
 	s8 lastDialogResponse;
 	u8 menuHoldKeyIndex;
 	u8 menuHoldKeyTimer;
+	s32 courseDoneMenuTimer;
+	s32 courseCompleteCoins;
+	s32 courseCompleteCoinsEqual;
 } DialogState;
 
 typedef struct {
@@ -200,6 +205,11 @@ typedef struct {
 	u16 musicParam2;
 } SoundState;
 
+typedef struct {
+	s32 sectionTimer;
+	s32 sectionTimerResult;
+} PracticeState;
+
 // list of saved objects
 typedef struct {
 	ObjectState objState;
@@ -208,6 +218,7 @@ typedef struct {
 	DialogState dialogState;
 	CameraState camState;
 	SoundState soundState;
+	PracticeState practiceState;
 } SaveState;
 
 
@@ -215,7 +226,7 @@ extern u8 gHasStateSaved;
 extern SaveState gCurrSaveState;
 
 void init_state(SaveState*);
-void save_level_init_state(LevelInitState*);
+void save_level_init_state(LevelInitState*,struct WarpDest*);
 void save_state(SaveState*);
 void load_level_init_state(const LevelInitState*);
 void load_state(const SaveState*);

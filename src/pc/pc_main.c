@@ -175,8 +175,6 @@ static void on_anim_frame(double time) {
         request_anim_frame(on_anim_frame);
 }
 #endif
-
-extern s8 gNonstop;
 void soft_reset(void);
 
 void main_func(void) {
@@ -185,10 +183,6 @@ void main_func(void) {
     fs_init(sys_ropaths, gamedir, userpath);
 
     configfile_load(configfile_name());
-    
-    if (configNonstop){
-        gNonstop = 1;
-    }
 
     if (gCLIOpts.FullScreen == 1)
         configWindow.fullscreen = true;

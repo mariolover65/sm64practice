@@ -30,6 +30,10 @@
 #include "options_menu.h"
 #endif
 
+#include "practice.h"
+
+#include <string.h>
+
 u16 gDialogColorFadeTimer;
 s8 gLastDialogLineNum;
 s32 gDialogVariable;
@@ -730,6 +734,8 @@ void print_credits_string(s16 x, s16 y, const u8 *str) {
 
 void handle_menu_scrolling(s8 scrollDirection, s8 *currentIndex, s8 minIndex, s8 maxIndex) {
     u8 index = 0;
+	
+	if (gRenderPracticeMenu||gFrameAdvance) return;
 
     if (scrollDirection == MENU_SCROLL_VERTICAL) {
         if (gPlayer3Controller->rawStickY > 60) {
@@ -1722,88 +1728,93 @@ void render_dialog_entries(void) {
     gDialogX = 0;
     gDialogY = 0;
 #endif
+	if (!gFrameAdvance&&!gRenderPracticeMenu){
+		switch (gDialogBoxState) {
+			case DIALOG_STATE_OPENING:
+				if (gDialogBoxOpenTimer == DEFAULT_DIALOG_BOX_ANGLE) {
+					play_dialog_sound(gDialogID);
+					play_sound(SOUND_MENU_MESSAGE_APPEAR, gDefaultSoundArgs);
+				}
 
-    switch (gDialogBoxState) {
-        case DIALOG_STATE_OPENING:
-            if (gDialogBoxOpenTimer == DEFAULT_DIALOG_BOX_ANGLE) {
-                play_dialog_sound(gDialogID);
-                play_sound(SOUND_MENU_MESSAGE_APPEAR, gDefaultSoundArgs);
-            }
+				if (gDialogBoxType == DIALOG_TYPE_ROTATE) {
+					gDialogBoxOpenTimer -= 7.5;
+					gDialogBoxScale -= 1.5;
+				} else {
+					gDialogBoxOpenTimer -= 10.0;
+					gDialogBoxScale -= 2.0;
+				}
 
-            if (gDialogBoxType == DIALOG_TYPE_ROTATE) {
-                gDialogBoxOpenTimer -= 7.5;
-                gDialogBoxScale -= 1.5;
-            } else {
-                gDialogBoxOpenTimer -= 10.0;
-                gDialogBoxScale -= 2.0;
-            }
+				if (gDialogBoxOpenTimer == 0.0f) {
+					gDialogBoxState = DIALOG_STATE_VERTICAL;
+					gDialogLineNum = 1;
+				}
+	#if !defined(VERSION_JP) && !defined(VERSION_SH)
+				lowerBound = 1;
+	#endif
+				break;
+			case DIALOG_STATE_VERTICAL:
+				gDialogBoxOpenTimer = 0.0f;
 
-            if (gDialogBoxOpenTimer == 0.0f) {
-                gDialogBoxState = DIALOG_STATE_VERTICAL;
-                gDialogLineNum = 1;
-            }
-#if !defined(VERSION_JP) && !defined(VERSION_SH)
-            lowerBound = 1;
-#endif
-            break;
-        case DIALOG_STATE_VERTICAL:
-            gDialogBoxOpenTimer = 0.0f;
+				if ((gPlayer3Controller->buttonPressed & A_BUTTON)
+					|| (gPlayer3Controller->buttonPressed & B_BUTTON)) {
+					if (gLastDialogPageStrPos == -1) {
+						handle_special_dialog_text(gDialogID);
+						gDialogBoxState = DIALOG_STATE_CLOSING;
+					} else {
+						gDialogBoxState = DIALOG_STATE_HORIZONTAL;
+						play_sound(SOUND_MENU_MESSAGE_NEXT_PAGE, gDefaultSoundArgs);
+					}
+				}
+	#if !defined(VERSION_JP) && !defined(VERSION_SH)
+				lowerBound = 1;
+	#endif
+				break;
+			case DIALOG_STATE_HORIZONTAL:
+				gDialogScrollOffsetY += dialog->linesPerBox * 2;
 
-            if ((gPlayer3Controller->buttonPressed & A_BUTTON)
-                || (gPlayer3Controller->buttonPressed & B_BUTTON)) {
-                if (gLastDialogPageStrPos == -1) {
-                    handle_special_dialog_text(gDialogID);
-                    gDialogBoxState = DIALOG_STATE_CLOSING;
-                } else {
-                    gDialogBoxState = DIALOG_STATE_HORIZONTAL;
-                    play_sound(SOUND_MENU_MESSAGE_NEXT_PAGE, gDefaultSoundArgs);
-                }
-            }
-#if !defined(VERSION_JP) && !defined(VERSION_SH)
-            lowerBound = 1;
-#endif
-            break;
-        case DIALOG_STATE_HORIZONTAL:
-            gDialogScrollOffsetY += dialog->linesPerBox * 2;
+				if (gDialogScrollOffsetY >= dialog->linesPerBox * DIAG_VAL1) {
+					gDialogTextPos = gLastDialogPageStrPos;
+					gDialogBoxState = DIALOG_STATE_VERTICAL;
+					gDialogScrollOffsetY = 0;
+				}
+	#if !defined(VERSION_JP) && !defined(VERSION_SH)
+				lowerBound = (gDialogScrollOffsetY / 16) + 1;
+	#endif
+				break;
+			case DIALOG_STATE_CLOSING:
+				if (gDialogBoxOpenTimer == 20.0f) {
+					level_set_transition(0, 0);
+					play_sound(SOUND_MENU_MESSAGE_DISAPPEAR, gDefaultSoundArgs);
 
-            if (gDialogScrollOffsetY >= dialog->linesPerBox * DIAG_VAL1) {
-                gDialogTextPos = gLastDialogPageStrPos;
-                gDialogBoxState = DIALOG_STATE_VERTICAL;
-                gDialogScrollOffsetY = 0;
-            }
-#if !defined(VERSION_JP) && !defined(VERSION_SH)
-            lowerBound = (gDialogScrollOffsetY / 16) + 1;
-#endif
-            break;
-        case DIALOG_STATE_CLOSING:
-            if (gDialogBoxOpenTimer == 20.0f) {
-                level_set_transition(0, 0);
-                play_sound(SOUND_MENU_MESSAGE_DISAPPEAR, gDefaultSoundArgs);
+					if (gDialogBoxType == DIALOG_TYPE_ZOOM) {
+						trigger_cutscene_dialog(2);
+					}
 
-                if (gDialogBoxType == DIALOG_TYPE_ZOOM) {
-                    trigger_cutscene_dialog(2);
-                }
+					gDialogResponse = gDialogLineNum;
+				}
 
-                gDialogResponse = gDialogLineNum;
-            }
+				gDialogBoxOpenTimer = gDialogBoxOpenTimer + 10.0f;
+				gDialogBoxScale = gDialogBoxScale + 2.0f;
 
-            gDialogBoxOpenTimer = gDialogBoxOpenTimer + 10.0f;
-            gDialogBoxScale = gDialogBoxScale + 2.0f;
-
-            if (gDialogBoxOpenTimer == DEFAULT_DIALOG_BOX_ANGLE) {
-                gDialogBoxState = DIALOG_STATE_OPENING;
-                gDialogID = -1;
-                gDialogTextPos = 0;
-                gLastDialogResponse = 0;
-                gLastDialogPageStrPos = 0;
-                gDialogResponse = 0;
-            }
-#if !defined(VERSION_JP) && !defined(VERSION_SH)
-            lowerBound = 1;
-#endif
-            break;
-    }
-
+				if (gDialogBoxOpenTimer == DEFAULT_DIALOG_BOX_ANGLE) {
+					gDialogBoxState = DIALOG_STATE_OPENING;
+					gDialogID = -1;
+					gDialogTextPos = 0;
+					gLastDialogResponse = 0;
+					gLastDialogPageStrPos = 0;
+					gDialogResponse = 0;
+				}
+	#if !defined(VERSION_JP) && !defined(VERSION_SH)
+				lowerBound = 1;
+	#endif
+				break;
+		}
+	}
+	
+	if (gFrameAdvance&&gDialogBoxState==DIALOG_STATE_HORIZONTAL){
+		lowerBound = (gDialogScrollOffsetY / 16) + 1;
+	}
+	
     render_dialog_box_type(dialog, dialog->linesPerBox);
 
     gDPSetScissor(gDisplayListHead++, G_SC_NON_INTERLACE,
@@ -2633,53 +2644,58 @@ s16 render_pause_courses_and_castle(void) {
             if (gMarioStates[0].action & ACT_FLAG_PAUSE_EXIT) {
                 render_pause_course_options(99, 93, &gDialogLineNum, 15);
             }
-
+			
+			if (!gFrameAdvance && !gRenderPracticeMenu){
 #ifdef VERSION_EU
-            if (gPlayer3Controller->buttonPressed & (A_BUTTON | Z_TRIG | START_BUTTON))
+				if (gPlayer3Controller->buttonPressed & (A_BUTTON | Z_TRIG | START_BUTTON))
 #else
-            if (gPlayer3Controller->buttonPressed & A_BUTTON
-             || gPlayer3Controller->buttonPressed & START_BUTTON)
+				if (gPlayer3Controller->buttonPressed & A_BUTTON
+				 || gPlayer3Controller->buttonPressed & START_BUTTON)
 #endif
-            {
-                level_set_transition(0, 0);
-                play_sound(SOUND_MENU_PAUSE_2, gDefaultSoundArgs);
-                gDialogBoxState = DIALOG_STATE_OPENING;
-                gMenuMode = -1;
+				{
+					level_set_transition(0, 0);
+					play_sound(SOUND_MENU_PAUSE_2, gDefaultSoundArgs);
+					gDialogBoxState = DIALOG_STATE_OPENING;
+					gMenuMode = -1;
 
-                if (gDialogLineNum == 2) {
-                    num = gDialogLineNum;
-                } else {
-                    num = 1;
-                }
+					if (gDialogLineNum == 2) {
+						num = gDialogLineNum;
+					} else {
+						num = 1;
+					}
 
-                return num;
-            }
+					return num;
+				}
+			}
             break;
         case DIALOG_STATE_HORIZONTAL:
             shade_screen();
             print_hud_pause_colorful_str();
             render_pause_castle_menu_box(160, 143);
             render_pause_castle_main_strings(104, 60);
-
+			
+			if (!gFrameAdvance && !gRenderPracticeMenu){
 #ifdef VERSION_EU
-            if (gPlayer3Controller->buttonPressed & (A_BUTTON | Z_TRIG | START_BUTTON))
+				if (gPlayer3Controller->buttonPressed & (A_BUTTON | Z_TRIG | START_BUTTON))
 #else
-            if (gPlayer3Controller->buttonPressed & A_BUTTON
-             || gPlayer3Controller->buttonPressed & START_BUTTON)
+				if (gPlayer3Controller->buttonPressed & A_BUTTON
+				 || gPlayer3Controller->buttonPressed & START_BUTTON)
 #endif
-            {
-                level_set_transition(0, 0);
-                play_sound(SOUND_MENU_PAUSE_2, gDefaultSoundArgs);
-                gMenuMode = -1;
-                gDialogBoxState = DIALOG_STATE_OPENING;
+				{
+					level_set_transition(0, 0);
+					play_sound(SOUND_MENU_PAUSE_2, gDefaultSoundArgs);
+					gMenuMode = -1;
+					gDialogBoxState = DIALOG_STATE_OPENING;
 
-                return 1;
-            }
+					return 1;
+				}
+			}
             break;
     }
-
+	
     if (gDialogTextAlpha < 250) {
-        gDialogTextAlpha += 25;
+		if (!gFrameAdvance && !gRenderPracticeMenu)
+			gDialogTextAlpha += 25;
     }
 #ifdef EXT_OPTIONS_MENU
     } else {
@@ -2762,29 +2778,32 @@ void print_hud_course_complete_coins(s16 x, s16 y) {
     print_hud_lut_string(HUD_LUT_GLOBAL, x + 32, y, courseCompleteCoinsStr);
 
     gSPDisplayList(gDisplayListHead++, dl_rgba16_text_end);
+	
+	u8 printHighscore = gCourseCompleteCoins>=gHudDisplay.coins&&(gGotFileCoinHiScore!=0);
+	if (printHighscore){
+		print_hud_course_complete_string(HUD_PRINT_HISCORE);
+	}
+	
+	if (!gRenderPracticeMenu&&!gFrameAdvance){
+		if (gCourseCompleteCoins >= gHudDisplay.coins) {
+			gCourseCompleteCoinsEqual = 1;
+			gCourseCompleteCoins = gHudDisplay.coins;
+		} else {
+			if ((gCourseDoneMenuTimer & 1) || gHudDisplay.coins > 70) {
+				gCourseCompleteCoins++;
+				play_sound(SOUND_MENU_YOSHI_GAIN_LIVES, gDefaultSoundArgs);
 
-    if (gCourseCompleteCoins >= gHudDisplay.coins) {
-        gCourseCompleteCoinsEqual = 1;
-        gCourseCompleteCoins = gHudDisplay.coins;
+				if (gCourseCompleteCoins == 50 || gCourseCompleteCoins == 100 || gCourseCompleteCoins == 150) {
+					play_sound(SOUND_GENERAL_COLLECT_1UP, gDefaultSoundArgs);
+					gMarioState[0].numLives++;
+				}
+			}
 
-        if (gGotFileCoinHiScore != 0) {
-            print_hud_course_complete_string(HUD_PRINT_HISCORE);
-        }
-    } else {
-        if ((gCourseDoneMenuTimer & 1) || gHudDisplay.coins > 70) {
-            gCourseCompleteCoins++;
-            play_sound(SOUND_MENU_YOSHI_GAIN_LIVES, gDefaultSoundArgs);
-
-            if (gCourseCompleteCoins == 50 || gCourseCompleteCoins == 100 || gCourseCompleteCoins == 150) {
-                play_sound(SOUND_GENERAL_COLLECT_1UP, gDefaultSoundArgs);
-                gMarioState[0].numLives++;
-            }
-        }
-
-        if (gHudDisplay.coins == gCourseCompleteCoins && gGotFileCoinHiScore != 0) {
-            play_sound(SOUND_MENU_MARIO_CASTLE_WARP2, gDefaultSoundArgs);
-        }
-    }
+			if (gHudDisplay.coins == gCourseCompleteCoins && gGotFileCoinHiScore != 0) {
+				play_sound(SOUND_MENU_MARIO_CASTLE_WARP2, gDefaultSoundArgs);
+			}
+		}
+	}
 }
 
 void play_star_fanfare_and_flash_hud(s32 arg, u8 starNum) {
@@ -3025,6 +3044,7 @@ s16 render_course_complete_screen(void) {
 #endif
 
             if (gCourseDoneMenuTimer > 110
+				&& (!gFrameAdvance && !gRenderPracticeMenu)
                 && (gPlayer3Controller->buttonPressed & A_BUTTON
                  || gPlayer3Controller->buttonPressed & START_BUTTON
 #ifdef VERSION_EU
@@ -3045,14 +3065,178 @@ s16 render_course_complete_screen(void) {
             }
             break;
     }
-
-    if (gDialogTextAlpha < 250) {
-        gDialogTextAlpha += 25;
-    }
-
-    gCourseDoneMenuTimer++;
+	
+	if (!gFrameAdvance && !gRenderPracticeMenu){
+		if (gDialogTextAlpha < 250) {
+			gDialogTextAlpha += 25;
+		}
+		gCourseDoneMenuTimer++;
+	}
 
     return 0;
+}
+
+char gTimerText[16];
+f32 gCurrTextScale = 1.0f;
+
+void set_timer_text(s32 time){
+	s32 centi,second,minute,hour;
+	char backwards[16];
+	s16 count = 0;
+	s16 i;
+	
+	time = (time>=10799999) ? 10799999 : time;
+	
+	centi = ((time%30)*100)/30;
+	second = (time/30)%60;
+	minute = (time/1800)%60;
+	hour = (time/108000);
+	
+	backwards[count++] = centi%10+'0';
+	backwards[count++] = centi/10+'0';
+	backwards[count++] = '.';
+	backwards[count++] = second%10+'0';
+	backwards[count++] = second/10+'0';
+	backwards[count++] = ':';
+	backwards[count++] = minute%10+'0';
+	if (hour||minute>9){
+		backwards[count++] = minute/10+'0';
+		if (hour){
+			backwards[count++] = ':';
+			backwards[count++] = hour%10+'0';
+			if (hour>9){
+				backwards[count++] = hour/10+'0';
+			}
+		}
+	}
+	
+	for (i=count-1;i>=0;--i){
+		gTimerText[count-1-i] = backwards[i];
+	}
+	gTimerText[count] = 0;
+}
+
+#define MAX_CONV_LEN 300
+
+u8 gCopyArea[MAX_CONV_LEN];
+
+void convert_text(u8* text){
+	s32 i = 0;
+	u8 loop = 1;
+	
+	while (loop){
+		switch (text[i]){
+			case '\0':
+				text[i] = DIALOG_CHAR_TERMINATOR;
+				loop = 0;
+				break;
+			case ' ':
+				text[i] = DIALOG_CHAR_SPACE;
+				break;
+			case '\n':
+				text[i] = DIALOG_CHAR_NEWLINE;
+				break;
+			case '.':
+				text[i] = 0x3F;
+				break;
+			case ',':
+				text[i] = DIALOG_CHAR_COMMA;
+				break;
+			case '!':
+				text[i] = 0xF2;
+				break;
+			case '%':
+				text[i] = 0xF3;
+				break;
+			case '?':
+				text[i] = 0xF4;
+				break;
+			case '"':
+				text[i] = 0xF6;
+				break;
+			case '\'':
+				text[i] = 0x3E;
+				break;
+			case '&':
+				text[i] = 0xE5;
+				break;
+			case ':':
+				text[i] = 0xE6;
+				break;
+			case '(':
+				text[i] = 0xE1;
+				break;
+			case ')':
+				text[i] = 0xE2;
+				break;
+			case '-':
+				text[i] = 0x9F;
+				break;
+			default:
+				text[i] = ASCII_TO_DIALOG(text[i]);
+				break;
+		}
+		
+		++i;
+	}
+}
+
+Color4 gTextColor = {255,255,255,255};
+
+void set_text_color(u8 r,u8 g,u8 b,u8 a){
+	gTextColor.r = r;
+	gTextColor.g = g;
+	gTextColor.b = b;
+	gTextColor.a = a;
+}
+
+s16 get_font_height(void){
+	return 16*gCurrTextScale;
+}
+
+void load_text_and_convert(const char* text){
+	size_t len = strnlen(text,MAX_CONV_LEN-1);
+	
+	memcpy(gCopyArea,text,len+1);
+	convert_text(gCopyArea);
+	gCopyArea[len] = DIALOG_CHAR_TERMINATOR;
+}
+
+s32 get_text_width(const char* text){
+	size_t len = strnlen(text,MAX_CONV_LEN-1);
+	load_text_and_convert(text);
+	
+	s32 x = 0;
+	for (u32 i=0;i<len;++i){
+		x += gDialogCharWidths[(u8)gCopyArea[i]];
+	}
+	return x;
+}
+
+void render_text_string_at(s16 x,s16 y,const char* text){
+	load_text_and_convert(text);
+	
+	create_dl_scale_matrix(MENU_MTX_PUSH, gCurrTextScale, gCurrTextScale, 1.0f);
+	gSPDisplayList(gDisplayListHead++, dl_ia_text_begin);
+	gDPSetEnvColor(gDisplayListHead++, gTextColor.r, gTextColor.g, gTextColor.b, gTextColor.a);
+	print_generic_string(x/gCurrTextScale, y/gCurrTextScale, gCopyArea);
+	gSPDisplayList(gDisplayListHead++, dl_ia_text_end);
+	gSPPopMatrix(gDisplayListHead++, G_MTX_MODELVIEW);
+}
+
+void render_shadow_text_string_at(s16 x,s16 y,const char* text){
+	s16 xT = x/gCurrTextScale;
+	s16 yT = y/gCurrTextScale;
+	load_text_and_convert(text);
+	
+	gSPDisplayList(gDisplayListHead++, dl_ia_text_begin);
+	create_dl_scale_matrix(MENU_MTX_PUSH, gCurrTextScale, gCurrTextScale, 1.0f);
+	gDPSetEnvColor(gDisplayListHead++, 0, 0, 0, gTextColor.a);
+	print_generic_string(xT+1, yT-1, gCopyArea);
+	gDPSetEnvColor(gDisplayListHead++, gTextColor.r, gTextColor.g, gTextColor.b, gTextColor.a);
+	print_generic_string(xT, yT, gCopyArea);
+	gSPDisplayList(gDisplayListHead++, dl_ia_text_end);
+	gSPPopMatrix(gDisplayListHead++, G_MTX_MODELVIEW);
 }
 
 // Only case 1 and 2 are used
@@ -3076,8 +3260,10 @@ s16 render_menus_and_dialogs() {
                 mode = render_course_complete_screen();
                 break;
         }
-
-        gDialogColorFadeTimer = (s16) gDialogColorFadeTimer + 0x1000;
+		
+		if (!gRenderPracticeMenu&&!gFrameAdvance){
+			gDialogColorFadeTimer = (s16) gDialogColorFadeTimer + 0x1000;
+		}
     } else if (gDialogID != -1) {
         // The Peach "Dear Mario" message needs to be repositioned separately
         if (gDialogID == 20) {
@@ -3086,7 +3272,9 @@ s16 render_menus_and_dialogs() {
         }
 
         render_dialog_entries();
-        gDialogColorFadeTimer = (s16) gDialogColorFadeTimer + 0x1000;
+		if (!gRenderPracticeMenu&&!gFrameAdvance){
+			gDialogColorFadeTimer = (s16) gDialogColorFadeTimer + 0x1000;
+		}
     }
     return mode;
 }

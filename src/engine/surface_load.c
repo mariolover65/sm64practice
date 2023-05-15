@@ -510,8 +510,8 @@ static void load_environmental_regions(s16 **data) {
         val = *(*data)++;
 
         loX = *(*data)++;
-        hiX = *(*data)++;
         loZ = *(*data)++;
+        hiX = *(*data)++;
         hiZ = *(*data)++;
 
         height = *(*data)++;

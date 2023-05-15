@@ -23,6 +23,8 @@
 #include "sm64.h"
 #include "sound_init.h"
 #include "thread6.h"
+#include "pc/configfile.h"
+#include "practice.h"
 
 #define INT_GROUND_POUND_OR_TWIRL (1 << 0) // 0x01
 #define INT_PUNCH                 (1 << 1) // 0x02
@@ -760,16 +762,14 @@ u32 interact_water_ring(struct MarioState *m, UNUSED u32 interactType, struct Ob
     return FALSE;
 }
 
-s8 gNonstop = 0;
-
 u32 interact_star_or_key(struct MarioState *m, UNUSED u32 interactType, struct Object *o) {
     u32 starIndex;
     u32 starGrabAction = ACT_STAR_DANCE_EXIT;
-    u32 noExit = gNonstop || (o->oInteractionSubtype & INT_SUBTYPE_NO_EXIT) != 0;
+    u32 noExit = configNonstop || (o->oInteractionSubtype & INT_SUBTYPE_NO_EXIT) != 0;
     u32 grandStar = (o->oInteractionSubtype & INT_SUBTYPE_GRAND_STAR) != 0;
 
     if (m->health >= 0x100) {
-		if (!gNonstop)
+		if (!configNonstop)
 			mario_stop_riding_and_holding(m);
 		
         queue_rumble_data(5, 80);
@@ -822,11 +822,15 @@ u32 interact_star_or_key(struct MarioState *m, UNUSED u32 interactType, struct O
 #endif
 
         if (grandStar) {
+			section_timer_game_win();
             return set_mario_action(m, ACT_JUMBO_STAR_CUTSCENE, 0);
         }
-
-        if (!gNonstop)
+		
+		timer_freeze();
+		
+        if (!configNonstop){
 			return set_mario_action(m, starGrabAction, noExit + 2 * grandStar);
+		}
     }
 
     return FALSE;
@@ -940,6 +944,7 @@ u32 interact_warp_door(struct MarioState *m, UNUSED u32 interactType, struct Obj
 
             m->interactObj = o;
             m->usedObj = o;
+			timer_freeze();
             return set_mario_action(m, doorAction, actionArg);
         }
     }
@@ -1014,6 +1019,8 @@ u32 interact_door(struct MarioState *m, UNUSED u32 interactType, struct Object *
             if (doorSaveFileFlag != 0 && !(save_file_get_flags() & doorSaveFileFlag)) {
                 enterDoorAction = ACT_UNLOCKING_STAR_DOOR;
             }
+			
+			timer_freeze();
 
             return set_mario_action(m, enterDoorAction, actionArg);
         } else if (!sDisplayingDoorText) {

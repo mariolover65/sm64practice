@@ -199,6 +199,7 @@ void soft_reset(void){
 	gHudFlash = 0;
 	bzero(sTransitionColorFadeCount,4);
 	bzero(sTransitionTextureFadeCount,4);
+	section_timer_game_reset();
 }
 
 u16 level_control_timer(s32 timerOp) {
@@ -484,7 +485,7 @@ void init_mario_after_warp(void) {
 // used for warps inside one level
 void warp_area(void) {
     if (sWarpDest.type != WARP_TYPE_NOT_WARPING) {
-		gLastWarpDest = sWarpDest;
+		//gLastWarpDest = sWarpDest;
         if (sWarpDest.type == WARP_TYPE_CHANGE_AREA) {
             level_control_timer(TIMER_CONTROL_HIDE);
             unload_mario_area();
@@ -505,9 +506,9 @@ void warp_level(void) {
     load_area(sWarpDest.areaIdx);
     init_mario_after_warp();
 	
-	if (gCurrPlayingReplay==NULL){
+	/*if (gCurrPlayingReplay==NULL){
 		init_replay_record(&gPracticeReplay,TRUE);
-	}
+	}*/
 }
 
 void warp_credits(void) {
@@ -994,8 +995,13 @@ s32 practice_warp(void) {
 	sTransitionUpdate = NULL;
 	gMarioState->numCoins = 0;
 	gHudDisplay.coins = 0;
+	gHudDisplay.wedges = 8;
 	gMarioState->health = 0x880;
 	gPracticeWarping = TRUE;
+	gMenuMode = -1;
+	sPowerMeterVisibleTimer = 0;
+	sPowerMeterStoredHealth = 8;
+	sPowerMeterHUD.animation = POWER_METER_HIDDEN;
 	gWarpTransDelay = 0;
 	gWarpTransition.isActive = TRUE;
 	gWarpTransition.type = WARP_TRANSITION_FADE_FROM_COLOR;
@@ -1064,6 +1070,10 @@ s32 play_mode_normal(void) {
 }
 
 s32 play_mode_paused(void) {
+	if (gPracticeDest.type!=WARP_TYPE_NOT_WARPING){
+		gPauseScreenMode = 1;
+	}
+	
     if (gPauseScreenMode == 0) {
         set_menu_mode(RENDER_PAUSE_SCREEN);
     } else if (gPauseScreenMode == 1) {
@@ -1183,8 +1193,8 @@ static s32 play_mode_unused(void) {
 s32 update_level(void) {
     s32 changeLevel;
 	
-	s32 practiceLevel = practice_update();
-	if (practiceLevel) return practiceLevel;
+	save_state_update();
+	if (gRenderPracticeMenu) return 0;
 
     switch (sCurrPlayMode) {
         case PLAY_MODE_NORMAL:
@@ -1208,7 +1218,7 @@ s32 update_level(void) {
         reset_volume();
         enable_background_sound();
     }
-
+	
     return changeLevel;
 }
 
@@ -1220,6 +1230,7 @@ s32 init_level(void) {
     sDelayedWarpOp = WARP_OP_NONE;
     sTransitionTimer = 0;
     sSpecialWarpLevelNum = 0;
+	section_timer_level_init();
 
     if (gCurrCreditsEntry == NULL) {
         gHudDisplay.flags = HUD_DISPLAY_DEFAULT;

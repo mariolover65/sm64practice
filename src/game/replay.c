@@ -2,6 +2,7 @@
 
 #include "replay.h"
 #include "game_init.h"
+#include "practice.h"
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -43,7 +44,7 @@ void init_replay_record(Replay* replay,u8 isLevelInit){
 	if (isLevelInit){
 		replay->state.type = LEVEL_INIT;
 		replay->state.levelState = malloc(sizeof(LevelInitState));
-		save_level_init_state(replay->state.levelState);
+		save_level_init_state(replay->state.levelState,&gLastWarpDest);
 	} else {
 		replay->state.type = SAVE_STATE;
 		replay->state.saveState = malloc(sizeof(SaveState));

@@ -97,6 +97,13 @@ bool         configNonstop          = false;
 bool         configDiscordRPC       = true;
 #endif
 
+bool configShowPos = false;
+bool configShowVel = false;
+bool configShowMaxHeight = false;
+u32 configSectionTimerType = 0;
+bool configShowWallkickFrame = false;
+bool configShowWallkickAngle = false;
+
 static const struct ConfigOption options[] = {
     {.name = "fullscreen",           .type = CONFIG_TYPE_BOOL, .boolValue = &configWindow.fullscreen},
     {.name = "window_x",             .type = CONFIG_TYPE_UINT, .uintValue = &configWindow.x},
@@ -147,6 +154,14 @@ static const struct ConfigOption options[] = {
     #ifdef DISCORDRPC
     {.name = "discordrpc_enable",    .type = CONFIG_TYPE_BOOL, .boolValue = &configDiscordRPC},
     #endif 
+	
+	{.name = "practice_show_vel",              .type = CONFIG_TYPE_BOOL, .boolValue = &configShowVel},
+	{.name = "practice_show_pos",              .type = CONFIG_TYPE_BOOL, .boolValue = &configShowPos},
+	{.name = "practice_show_max_height",       .type = CONFIG_TYPE_BOOL, .boolValue = &configShowMaxHeight},
+	{.name = "practice_show_wallkick_frame",   .type = CONFIG_TYPE_BOOL, .boolValue = &configShowWallkickFrame},
+	{.name = "practice_show_wallkick_angle",   .type = CONFIG_TYPE_BOOL, .boolValue = &configShowWallkickAngle},
+	
+	{.name = "practice_section_timer_type",    .type = CONFIG_TYPE_UINT, .uintValue = &configSectionTimerType},
 };
 
 // Reads an entire line from a file (excluding the newline character) and returns an allocated string
