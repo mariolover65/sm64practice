@@ -8,13 +8,17 @@
 #include "hud.h"
 #include "level_update.h"
 #include "save_file.h"
+#include "replay.h"
+
+#include <stdio.h>
 
 typedef struct {
 	struct Camera areaCams[8];
 	struct LakituState lakituState;
 	struct PlayerCameraState playerCam;
 	struct CameraFOVStatus fovState;
-	struct TransitionInfo camModeTransition;
+	struct ModeTransitionInfo modeInfo;
+	struct TransitionInfo modeTransition;
 	struct CutsceneVariable cutsceneVars[10];
 	struct CameraStoredInfo parallelTrackInfo;
 	struct CameraStoredInfo cameraStoreCUp;
@@ -83,20 +87,40 @@ typedef struct {
 	struct Object objectPoolCopy[OBJECT_POOL_CAPACITY];
 	struct ObjectNode freeList;
 	struct ObjectNode objectListArray[16];
+	struct HudDisplay hudState;
 	struct MarioState marioState;
 	struct MarioBodyState marioBodyState;
 	struct SpawnInfo marioSpawnInfo;
-	struct HudDisplay hudState;
 	struct Object* marioPlatform;
 	AreaData areaData;
 	u8 objectMemoryPoolData[0x800];
 	s8 doorAdjacentRooms[120];
-	u32 lastButtons;
+	u16 lastButtons;
 } ObjectState;
 
 // misc level state
 typedef struct {
 	struct WarpDest warpDest;
+	struct WarpDest loc;
+	u32 globalTimer;
+	struct SaveBuffer saveBuffer;
+	s16 currSaveFileNum;
+	s16 currActNum;
+	s16 currCourseNum;
+	s16 savedCourseNum;
+	s16 THIWaterDrained;
+	s16 TTCSpeedSetting;
+	s16 CCMEnteredSlide;
+	s8 shouldNotPlayCastleMusic;
+	u8 specialTripleJump;
+	u8 pssSlideStarted;
+	s8 yoshiDead;
+	u8 nonstop;
+	u8 lastCompletedCourseNum;
+	u8 lastCompletedStarNum;
+	
+	u16 areaUpdateCounter;
+	
 	s16 specialWarpLevelDest;
 	s16 delayedWarpOp;
 	s16 delayedWarpTimer;
@@ -107,6 +131,9 @@ typedef struct {
 	struct PowerMeterHUD hudAnim;
 	s16 powerMeterStoredHealth;
 	s32 powerMeterVisibleTimer;
+	
+	u16 randState;
+	u16 randCalls;
 	
 	s16 warpTransDelay;
 	u32 fbSetColor;
@@ -142,12 +169,24 @@ typedef struct {
 	u8 justTeleported;
 	s8 warpCheckpointIsActive;
 	s8 dddPaintingStatus;
+	s16 wdwWaterLevelChanging;
+	s32 wdwWaterLevelSet;
+	
+	s32 envLevels[2];
+	s16 envRegionHeights[3];
+	
+	s16 snowParticleCount;
+	s16 bubbleParticleCount;
+	struct EnvFxParticle* envBuffer;
 } LevelState;
 
+// only the state needed for a level init
 typedef struct {
 	struct WarpDest loc;
+	
 	u32 globalTimer;
 	struct SaveBuffer saveBuffer;
+	Vec3f holp;
 	s16 currSaveFileNum;
 	s16 currActNum;
 	s16 currCourseNum;
@@ -155,14 +194,33 @@ typedef struct {
 	s16 THIWaterDrained;
 	s16 TTCSpeedSetting;
 	s16 CCMEnteredSlide;
-	s16 WDWWaterLevelChanging;
-	s16 health;
+	u16 lastButtons;
 	s8 shouldNotPlayCastleMusic;
 	u8 specialTripleJump;
 	u8 pssSlideStarted;
 	s8 yoshiDead;
 	u8 lastCompletedCourseNum;
 	u8 lastCompletedStarNum;
+	u8 nonstop;
+	u8 introSkip;
+	s8 dddPaintingStatus;
+	
+	u8 practiceSubStatus;
+	u8 practiceStageText;
+	
+	u16 randState;
+	u16 randCalls;
+	s16 numStars;
+	s16 camSelectionFlags;
+	s8 numLives;
+	s16 health;
+	s32 envLevels[2];
+	s16 envRegionHeights[3];
+	
+	s16 slideYaw;
+	s16 twirlYaw;
+	f32 slideVelX;
+	f32 slideVelZ;
 } LevelInitState;
 
 typedef struct {
@@ -206,30 +264,42 @@ typedef struct {
 } SoundState;
 
 typedef struct {
+	struct WarpDest lastWarpDest;
 	s32 sectionTimer;
 	s32 sectionTimerResult;
+	u8 practiceSubStatus;
+	u8 practiceStageText;
+	u8 introSkip;
 } PracticeState;
 
 // list of saved objects
 typedef struct {
 	ObjectState objState;
-	LevelInitState initState;
 	LevelState levelState;
 	DialogState dialogState;
 	CameraState camState;
 	SoundState soundState;
 	PracticeState practiceState;
+	Replay* replayState;
 } SaveState;
 
 
 extern u8 gHasStateSaved;
 extern SaveState gCurrSaveState;
+extern Replay* gSaveStateReplay;
 
 void init_state(SaveState*);
 void save_level_init_state(LevelInitState*,struct WarpDest*);
 void save_state(SaveState*);
 void load_level_init_state(const LevelInitState*);
+void load_post_level_init_state(const LevelInitState*);
 void load_state(const SaveState*);
 u32 get_state_size(const SaveState* state);
+
+void serialize_state(FILE*,const SaveState*);
+u8 deserialize_state(FILE*,SaveState*);
+
+void serialize_level_init_state(FILE*,const LevelInitState*);
+u8 deserialize_level_init_state(FILE*,LevelInitState*);
 
 #endif

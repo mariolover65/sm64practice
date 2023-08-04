@@ -21,6 +21,9 @@
 #include "sm64.h"
 #include "text_strings.h"
 
+#include "game/level_update.h"
+#include "game/practice.h"
+
 #include "eu_translation.h"
 #ifdef VERSION_EU
 #undef LANGUAGE_FUNCTION
@@ -2786,6 +2789,9 @@ s32 lvl_init_menu_values_and_cursor_pos(UNUSED s32 arg, UNUSED s32 unused) {
 #ifdef VERSION_EU
     s8 fileNum;
 #endif
+	gDisableRendering = FALSE;
+	gPracticeDest.type = WARP_TYPE_NOT_WARPING;
+	sWarpDest.type = WARP_TYPE_NOT_WARPING;
     sSelectedButtonID = MENU_BUTTON_NONE;
     sCurrentMenuLevel = MENU_LAYER_MAIN;
     sTextBaseAlpha = 0;
@@ -2847,5 +2853,6 @@ s32 lvl_init_menu_values_and_cursor_pos(UNUSED s32 arg, UNUSED s32 unused) {
  */
 s32 lvl_update_obj_and_load_file_selected(UNUSED s32 arg, UNUSED s32 unused) {
     area_update_objects();
+	gDisableRendering = FALSE;
     return sSelectedFileNum;
 }

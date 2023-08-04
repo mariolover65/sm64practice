@@ -65,12 +65,24 @@ extern bool         configDiscordRPC;
 #endif
 
 extern bool configShowPos;
+extern bool configShowHOLP;
+extern bool configShowAngle;
 extern bool configShowVel;
 extern bool configShowMaxHeight;
 extern bool configShowWallkickFrame;
 extern bool configShowWallkickAngle;
+extern bool configShowRNGInfo;
+extern bool configShowBowserInfo;
+extern bool configShowEfficiency;
+extern bool configUseGhost;
+extern bool configGhostDistanceFade;
+extern bool configResetMusic;
+extern bool configDisableMusic;
 
-extern u32 configSectionTimerType;
+extern u32 configAngleDisplayType;
+extern u32 configPracticeType;
+extern u32 configStageText;
+extern u32 configGhostOpacity;
 
 void configfile_load(const char *filename);
 void configfile_save(const char *filename);

@@ -222,7 +222,7 @@ u32 main_pool_pop_state(void) {
  * function blocks until completion.
  */
 static void dma_read(u8 *dest, u8 *srcStart, u8 *srcEnd) {
-    u32 size = ALIGN16(srcEnd - srcStart);
+    UNUSED u32 size = ALIGN16(srcEnd - srcStart);
 
     memcpy(dest, srcStart, srcEnd - srcStart);
 }
@@ -415,7 +415,7 @@ static struct MarioAnimDmaRelatedThing *func_802789F0(u8 *srcAddr) {
     return sp1C;
 }
 
-void func_80278A78(struct MarioAnimation *a, void *b, struct Animation *target) {
+void init_anim_memory(struct MarioAnimation *a, void *b, struct Animation *target) {
     if (b != NULL) {
         a->animDmaTable = func_802789F0(b);
     }

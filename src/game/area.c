@@ -246,6 +246,7 @@ void load_area(s32 index) {
         }
 
         load_obj_warp_nodes();
+		ghost_load(&gCurrentArea->unk04->node);
         geo_call_global_function_nodes(&gCurrentArea->unk04->node, GEO_CONTEXT_AREA_LOAD);
     }
 }
@@ -254,6 +255,7 @@ void unload_area(void) {
     if (gCurrentArea != NULL) {
         unload_objects_from_area(0, gCurrentArea->index);
         geo_call_global_function_nodes(&gCurrentArea->unk04->node, GEO_CONTEXT_AREA_UNLOAD);
+		ghost_unload();
 
         gCurrentArea->flags = 0;
         gCurrentArea = NULL;
@@ -370,8 +372,6 @@ void play_transition_after_delay(s16 transType, s16 time, u8 red, u8 green, u8 b
     play_transition(transType, time, red, green, blue);
 }
 
-static u8 sOpenPracticeMenuNextFrame = 0;
-
 void render_game(void) {
 	set_text_color(255,255,255,255);
 	
@@ -431,21 +431,6 @@ void render_game(void) {
             clear_frame_buffer(gWarpTransFBSetColor);
         }
     }
-	
-	if (sOpenPracticeMenuNextFrame){
-		gRenderPracticeMenu = TRUE;
-		sOpenPracticeMenuNextFrame = FALSE;
-	}
-	
-	if ((gPlayer1Controller->buttonPressed & D_JPAD) && !gRenderPracticeMenu){
-		sOpenPracticeMenuNextFrame = TRUE;
-	}
-	
-	if (gRenderPracticeMenu){
-		if ((gPlayer1Controller->buttonPressed & B_BUTTON)){
-			gRenderPracticeMenu = FALSE;
-		}
-	}
 	
 	render_practice_info();
 	

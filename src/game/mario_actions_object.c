@@ -11,6 +11,8 @@
 #include "engine/math_util.h"
 #include "thread6.h"
 
+#include "practice.h"
+
 /**
  * Used by act_punching() to determine Mario's forward velocity during each
  * animation frame.
@@ -379,10 +381,13 @@ s32 act_holding_bowser(struct MarioState *m) {
             if (m->angleVel[1] < -0x1000) {
                 m->angleVel[1] = -0x1000;
             }
+			
+			update_practice_bowser_info(m->angleVel[1],spin);
         }
     } else {
         m->actionArg = 0;
         m->angleVel[1] = approach_s32(m->angleVel[1], 0, 64, 64);
+		update_practice_bowser_info(m->angleVel[1],0);
     }
 
     // spin = starting yaw

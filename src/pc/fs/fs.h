@@ -129,10 +129,15 @@ const char *fs_convert_path(char *buf, const size_t bufsiz, const char *path);
 /* these operate on the real filesystem and are used by fs_packtype_dir */
 
 bool fs_sys_walk(const char *base, walk_fn_t walk, void *user, const bool recur);
+bool fs_sys_walk_with_dir(const char *base, walk_fn_t walk, void *user);
 fs_pathlist_t fs_sys_enumerate(const char *base, const bool recur);
+fs_pathlist_t fs_sys_enumerate_with_dir(const char *base);
 bool fs_sys_file_exists(const char *name);
 bool fs_sys_dir_exists(const char *name);
 bool fs_sys_mkdir(const char *name); // creates with 0777 by default
+bool fs_sys_rmdir(const char* name);
 bool fs_sys_copy_file(const char *oldname, const char *newname);
+
+bool fs_sys_remove_file(const char* name);
 
 #endif // _SM64_FS_H_

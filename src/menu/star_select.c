@@ -20,6 +20,8 @@
 #include "text_strings.h"
 #include "prevent_bss_reordering.h"
 
+#include "game/practice.h"
+
 /**
  * @file star_select.c
  * This file implements how the star select screen (act selector) function.
@@ -263,6 +265,10 @@ void print_act_selector_strings(void) {
     unsigned char myScore[] = { TEXT_MYSCORE };
 #endif
     unsigned char starNumbers[] = { TEXT_ZERO };
+	
+	if (gCurrCourseNum==COURSE_NONE){
+		return;
+	}
 
 #ifdef VERSION_EU
     u8 **levelNameTbl;
@@ -439,5 +445,11 @@ s32 lvl_update_obj_and_load_act_button_actions(UNUSED s32 arg, UNUSED s32 unused
 
     area_update_objects();
     sActSelectorMenuTimer++;
+	
+	if (gNoStarSelectWarp||gSaveStateWarpDelay!=0||gPlaybackPrimed){
+		gDisableRendering = FALSE;
+		return gCurrActNum==0 ? 1 : gCurrActNum;
+	}
+	
     return sLoadedActNum;
 }

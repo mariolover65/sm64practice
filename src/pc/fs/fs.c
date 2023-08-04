@@ -422,6 +422,31 @@ bool fs_sys_walk(const char *base, walk_fn_t walk, void *user, const bool recur)
     return ret;
 }
 
+bool fs_sys_walk_with_dir(const char *base, walk_fn_t walk, void *user) {
+    char fullpath[SYS_MAX_PATH];
+    DIR *dir;
+    struct dirent *ent;
+
+    if (!(dir = opendir(base))) {
+        fprintf(stderr, "fs_dir_walk(): could not open `%s`\n", base);
+        return false;
+    }
+
+    bool ret = true;
+
+    while ((ent = readdir(dir)) != NULL) {
+        if (ent->d_name[0] == 0 || ent->d_name[0] == '.') continue; // skip ./.. and hidden files
+        snprintf(fullpath, sizeof(fullpath), "%s/%s", base, ent->d_name);
+		if (!walk(user, fullpath)) {
+			ret = false;
+			break;
+		}
+    }
+
+    closedir(dir);
+    return ret;
+}
+
 fs_pathlist_t fs_sys_enumerate(const char *base, const bool recur) {
     char **paths = malloc(sizeof(char *) * 32);
     fs_pathlist_t pathlist = { paths, 0, 32 };
@@ -434,12 +459,37 @@ fs_pathlist_t fs_sys_enumerate(const char *base, const bool recur) {
     return pathlist;
 }
 
+fs_pathlist_t fs_sys_enumerate_with_dir(const char *base) {
+    char **paths = malloc(sizeof(char *) * 32);
+    fs_pathlist_t pathlist = { paths, 0, 32 };
+
+    if (!paths) return pathlist;
+
+    if (!fs_sys_walk_with_dir(base, enumerate_walk, &pathlist))
+        fs_pathlist_free(&pathlist);
+
+    return pathlist;
+}
+
+
 bool fs_sys_mkdir(const char *name) {
     #ifdef _WIN32
     return _mkdir(name) == 0;
     #else
     return mkdir(name, 0777) == 0;
     #endif
+}
+
+bool fs_sys_rmdir(const char* name) {
+	#ifdef _WIN32
+	return _rmdir(name) == 0;
+	#else
+	return rmdir(name) == 0;
+	#endif
+}
+
+bool fs_sys_remove_file(const char* name){
+	return remove(name)==0;
 }
 
 bool fs_sys_copy_file(const char *oldname, const char *newname) {

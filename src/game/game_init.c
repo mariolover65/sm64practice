@@ -27,6 +27,7 @@
 #endif
 
 #include "replay.h"
+#include "stats.h"
 #include "practice.h"
 
 // FIXME: I'm not sure all of these variables belong in this file, but I don't
@@ -47,8 +48,8 @@ OSMesg D_80339CD4;
 struct VblankHandler gGameVblankHandler;
 uintptr_t gPhysicalFrameBuffers[3];
 uintptr_t gPhysicalZBuffer;
-void *D_80339CF0;
-void *D_80339CF4;
+void *gMarioAnimMemPool;
+void *gDemoInputsMemPool;
 struct MarioAnimation gMarioAnimation;
 struct MarioAnimation gDemo;
 UNUSED u8 filler80339D30[0x90];
@@ -310,10 +311,6 @@ void display_and_vsync(void) {
     if (++frameBufferIndex == 3) {
         frameBufferIndex = 0;
     }
-	if (!gRenderPracticeMenu&&!gFrameAdvance){
-		++gGlobalTimer;
-		++gSectionTimer;
-	}
 }
 
 // this function records distinct inputs over a 255-frame interval to RAM locations and was likely
@@ -474,6 +471,16 @@ void read_controller_inputs(void) {
         osContGetReadData(&gControllerPads[0]);
     }
     run_demo_inputs();
+	
+	s8 oldRawStickX = gPlayer1Controller->rawStickX;
+	s8 oldRawStickY = gPlayer1Controller->rawStickY;
+	u16 oldButtons = gPlayer1Controller->buttonDown;
+	
+	if (gCurrPlayingReplay){
+		oldRawStickX = 0;
+		oldRawStickY = 0;
+		oldButtons &= ~REPLAY_BUTTON_MASK;
+	}
 
     for (i = 0; i < 2; i++) {
         struct Controller *controller = &gControllers[i];
@@ -487,7 +494,6 @@ void read_controller_inputs(void) {
             controller->extStickY = controller->controllerData->ext_stick_y;
             controller->buttonPressed = controller->controllerData->button
                                         & (controller->controllerData->button ^ controller->buttonDown);
-            // 0.5x A presses are a good meme
             controller->buttonDown = controller->controllerData->button;
             adjust_analog_stick(controller);
         } else {
@@ -503,20 +509,28 @@ void read_controller_inputs(void) {
             controller->stickMag = 0;
         }
     }
+	
+	s8 newRawStickX = gPlayer1Controller->rawStickX;
+	s8 newRawStickY = gPlayer1Controller->rawStickY;
+	u16 newButtons = gPlayer1Controller->buttonDown;
+	
+	if (gCurrPlayingReplay){
+		newRawStickX = 0;
+		newRawStickY = 0;
+		newButtons &= ~REPLAY_BUTTON_MASK;
+	}
+	
+	if (oldRawStickX!=newRawStickX||
+		oldRawStickY!=newRawStickY||
+		oldButtons!=newButtons){
+		gInactivityTimer = 0;
+	}
 
     // For some reason, player 1's inputs are copied to player 3's port. This
     // potentially may have been a way the developers "recorded" the inputs
     // for demos, despite record_demo existing.
 	
-	if (!gRenderPracticeMenu&&!gFrameAdvance){
-		copy_to_player_3();
-	}
-	
-	if (gCurrRecordingReplay){
-		add_frame();
-	} else if (gCurrPlayingReplay){
-		update_replay();
-	}
+	copy_to_player_3();
 }
 
 // initialize the controller structs to point at the OSCont information.
@@ -567,12 +581,12 @@ void setup_game_memory(void) {
     gPhysicalFrameBuffers[0] = VIRTUAL_TO_PHYSICAL(gFrameBuffer0);
     gPhysicalFrameBuffers[1] = VIRTUAL_TO_PHYSICAL(gFrameBuffer1);
     gPhysicalFrameBuffers[2] = VIRTUAL_TO_PHYSICAL(gFrameBuffer2);
-    D_80339CF0 = main_pool_alloc(0x4000, MEMORY_POOL_LEFT);
-    set_segment_base_addr(17, (void *) D_80339CF0);
-    func_80278A78(&gMarioAnimation, gMarioAnims, D_80339CF0);
-    D_80339CF4 = main_pool_alloc(2048, MEMORY_POOL_LEFT);
-    set_segment_base_addr(24, (void *) D_80339CF4);
-    func_80278A78(&gDemo, gDemoInputs, D_80339CF4);
+    gMarioAnimMemPool = main_pool_alloc(0x4000, MEMORY_POOL_LEFT);
+    set_segment_base_addr(17, (void *) gMarioAnimMemPool);
+    init_anim_memory(&gMarioAnimation, gMarioAnims, gMarioAnimMemPool);
+    gDemoInputsMemPool = main_pool_alloc(2048, MEMORY_POOL_LEFT);
+    set_segment_base_addr(24, (void *) gDemoInputsMemPool);
+    init_anim_memory(&gDemo, gDemoInputs, gDemoInputsMemPool);
     load_segment(0x10, _entrySegmentRomStart, _entrySegmentRomEnd, MEMORY_POOL_LEFT);
     load_segment_decompress(2, _segment2_mio0SegmentRomStart, _segment2_mio0SegmentRomEnd);
 }
@@ -622,7 +636,9 @@ void game_loop_one_iteration(void) {
     config_gfx_pool();
     read_controller_inputs();
     levelCommandAddr = level_script_execute(levelCommandAddr);
-    display_and_vsync();
+	
+	if (!gDisableRendering)
+		display_and_vsync();
 
     // when debug info is enabled, print the "BUF %d" information.
     if (gShowDebugText) {

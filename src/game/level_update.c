@@ -182,6 +182,11 @@ extern u8 sTransitionColorFadeCount[4];
 extern u16 sTransitionTextureFadeCount[2];
 extern s16 gWarpTransDelay;
 
+extern u16 gRandomSeed16;
+extern u16 gRandomCalls;
+
+void practice_warp(void);
+
 void soft_reset(void){
 	if (gCurrLevelNum==1)
 		return;
@@ -190,7 +195,16 @@ void soft_reset(void){
 	gWarpTransition.time = 0;
 	disable_warp_checkpoint();
 	sCurrPlayMode = PLAY_MODE_CHANGE_LEVEL;
-	sWarpDest.type = WARP_TYPE_CHANGE_LEVEL;
+	gPracticeDest.type = WARP_TYPE_CHANGE_LEVEL;
+	gPracticeDest.levelNum = 1;
+	gPracticeDest.areaIdx = 1;
+	gPracticeDest.nodeId = 0;
+	practice_warp();
+	gRandomSeed16 = 0;
+	gRandomCalls = 0;
+	gGlobalTimer = 1;
+	
+	/*sWarpDest.type = WARP_TYPE_CHANGE_LEVEL;
 	sWarpDest.levelNum = 1;
 	sWarpDest.areaIdx = 1;
 	reset_dialog_render_state();
@@ -199,7 +213,7 @@ void soft_reset(void){
 	gHudFlash = 0;
 	bzero(sTransitionColorFadeCount,4);
 	bzero(sTransitionTextureFadeCount,4);
-	section_timer_game_reset();
+	*/
 }
 
 u16 level_control_timer(s32 timerOp) {
@@ -291,6 +305,12 @@ void load_level_init_text(u32 arg) {
             gotAchievement = save_file_get_star_flags(gCurrSaveFileNum - 1, gCurrCourseNum - 1);
             break;
     }
+
+	if (configStageText==1&&dialogID!=255)
+		gotAchievement = FALSE;
+	
+	if (configStageText==2)
+		gotAchievement = TRUE;
 
     if (!gotAchievement) {
         level_set_transition(-1, NULL);
@@ -505,10 +525,6 @@ void warp_level(void) {
 
     load_area(sWarpDest.areaIdx);
     init_mario_after_warp();
-	
-	/*if (gCurrPlayingReplay==NULL){
-		init_replay_record(&gPracticeReplay,TRUE);
-	}*/
 }
 
 void warp_credits(void) {
@@ -706,6 +722,7 @@ void initiate_painting_warp(void) {
                 level_set_transition(74, basic_update);
 
                 set_mario_action(gMarioState, ACT_DISAPPEARED, 0);
+				practice_level_change_trigger();
 
                 gMarioState->marioObj->header.gfx.node.flags &= ~GRAPH_RENDER_ACTIVE;
 
@@ -762,6 +779,7 @@ s16 level_trigger_warp(struct MarioState *m, s32 warpOp) {
                 }
                 sDelayedWarpTimer = 48;
                 sSourceWarpNodeId = WARP_NODE_DEATH;
+				practice_death_exit();
                 play_transition(WARP_TRANSITION_FADE_INTO_BOWSER, 0x30, 0x00, 0x00, 0x00);
                 play_sound(SOUND_MENU_BOWSER_LAUGH, gDefaultSoundArgs);
                 break;
@@ -774,6 +792,7 @@ s16 level_trigger_warp(struct MarioState *m, s32 warpOp) {
                     } else {
                         sSourceWarpNodeId = WARP_NODE_DEATH;
                     }
+					practice_death_exit();
                 }
                 sDelayedWarpTimer = 20;
                 play_transition(WARP_TRANSITION_FADE_INTO_CIRCLE, 0x14, 0x00, 0x00, 0x00);
@@ -988,9 +1007,10 @@ void basic_update(UNUSED s16 *arg) {
 
 int gPressedStart = 0;
 
-s32 practice_warp(void) {
+void practice_warp(void){
 	sWarpDest = gPracticeDest;
 	gPracticeDest.type = WARP_TYPE_NOT_WARPING;
+	reset_dialog_render_state();
 	sTransitionTimer = 0;
 	sTransitionUpdate = NULL;
 	gMarioState->numCoins = 0;
@@ -999,6 +1019,7 @@ s32 practice_warp(void) {
 	gMarioState->health = 0x880;
 	gPracticeWarping = TRUE;
 	gMenuMode = -1;
+	gHudFlash = FALSE;
 	sPowerMeterVisibleTimer = 0;
 	sPowerMeterStoredHealth = 8;
 	sPowerMeterHUD.animation = POWER_METER_HIDDEN;
@@ -1006,10 +1027,22 @@ s32 practice_warp(void) {
 	gWarpTransition.isActive = TRUE;
 	gWarpTransition.type = WARP_TRANSITION_FADE_FROM_COLOR;
 	gWarpTransition.time = 16;
-	gWarpTransition.data.red = 255;
-	gWarpTransition.data.green = 255;
-	gWarpTransition.data.blue = 255;
-	set_warp_transition_rgb(255,255,255);
+	
+	// set transition colors properly
+	s32 courseNum = gLevelToCourseNumTable[gPracticeDest.levelNum - 1];
+	if ((courseNum == COURSE_NONE || courseNum > COURSE_STAGES_MAX) && 
+		!(sWarpDest.levelNum==LEVEL_CASTLE_GROUNDS&&sWarpDest.nodeId==0x04)){
+		gWarpTransition.data.red = 0;
+		gWarpTransition.data.green = 0;
+		gWarpTransition.data.blue = 0;
+		set_warp_transition_rgb(0,0,0);
+	} else {
+		gWarpTransition.data.red = 255;
+		gWarpTransition.data.green = 255;
+		gWarpTransition.data.blue = 255;
+		set_warp_transition_rgb(255,255,255);
+	}
+	
 	sTransitionColorFadeCount[0] = 0;
 	sTransitionColorFadeCount[1] = 0;
 	sTransitionColorFadeCount[2] = 0;
@@ -1088,6 +1121,7 @@ s32 play_mode_paused(void) {
             initiate_warp(LEVEL_CASTLE, 1, 0x1F, 0);
             fade_into_special_warp(0, 0);
             gSavedCourseNum = COURSE_NONE;
+			practice_pause_exit();
         }
 		gCameraMovementFlags &= ~CAM_MOVE_PAUSE_SCREEN;
     }
@@ -1222,15 +1256,22 @@ s32 update_level(void) {
     return changeLevel;
 }
 
+static u8 sJustFileSelected = FALSE;
+
 s32 init_level(void) {
     s32 useCutsceneFade = 0;
 
     set_play_mode(PLAY_MODE_NORMAL);
-
+	
     sDelayedWarpOp = WARP_OP_NONE;
     sTransitionTimer = 0;
     sSpecialWarpLevelNum = 0;
-	section_timer_level_init();
+	
+	// trick the game
+	if (sWarpDest.levelNum==LEVEL_CASTLE_GROUNDS&&sWarpDest.nodeId==0x04){
+		sWarpDest.type = WARP_TYPE_NOT_WARPING;
+		gLastWarpDest = sWarpDest;
+	}
 
     if (gCurrCreditsEntry == NULL) {
         gHudDisplay.flags = HUD_DISPLAY_DEFAULT;
@@ -1287,6 +1328,20 @@ s32 init_level(void) {
     if (gMarioState->action == ACT_INTRO_CUTSCENE) {
         sound_banks_disable(2, 0x0330);
     }
+	
+	if (gPracticeDest.type==WARP_TYPE_NOT_WARPING)
+		gNoStarSelectWarp = FALSE;
+	
+	if (sJustFileSelected){
+		sJustFileSelected = FALSE;
+		practice_file_select();
+	}
+	
+	practice_level_init();
+	
+	if (gPracticeWarping)
+		printf("disabled practice warp\n");
+	gPracticeWarping = FALSE;
 
     return 1;
 }
@@ -1336,6 +1391,11 @@ s32 lvl_init_from_save_file(UNUSED s16 arg0, s32 levelNum) {
     gSavedCourseNum = COURSE_NONE;
     gCurrCreditsEntry = NULL;
     gSpecialTripleJump = 0;
+	
+	gLastWarpDest.levelNum = levelNum;
+	gLastWarpDest.areaIdx = 1;
+	gLastWarpDest.nodeId = 0x4;
+	gLastWarpDest.arg = 0;
 
     init_mario_from_save_file();
     disable_warp_checkpoint();
@@ -1351,6 +1411,9 @@ s32 lvl_set_current_level(UNUSED s16 arg0, s32 levelNum) {
     s32 checkpointActive = sWarpCheckpointIsActive;
 
     sWarpCheckpointIsActive = 0;
+	if (gCurrLevelNum==16&&levelNum==16){
+		sJustFileSelected = TRUE;
+	}
     gCurrLevelNum = levelNum;
     gCurrCourseNum = gLevelToCourseNumTable[levelNum - 1];
 
@@ -1383,6 +1446,7 @@ s32 lvl_set_current_level(UNUSED s16 arg0, s32 levelNum) {
 	
 	if (gNoStarSelectWarp!=0) {
 		gNoStarSelectWarp = FALSE;
+		gDisableRendering = FALSE;
 		return 0;
 	}
 

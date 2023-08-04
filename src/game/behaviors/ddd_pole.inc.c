@@ -1,6 +1,9 @@
 
+extern s32 gPracticeSubStatus;
+
 void bhv_ddd_pole_init(void) {
-    if (!(save_file_get_flags() & (SAVE_FLAG_HAVE_KEY_2 | SAVE_FLAG_UNLOCKED_UPSTAIRS_DOOR))) {
+	u8 shouldDelete = !(save_file_get_flags() & (SAVE_FLAG_HAVE_KEY_2 | SAVE_FLAG_UNLOCKED_UPSTAIRS_DOOR));
+    if ((shouldDelete&&gPracticeSubStatus!=2)||gPracticeSubStatus==1) {
         obj_mark_for_deletion(o);
     } else {
         o->hitboxDownOffset = 100.0f;

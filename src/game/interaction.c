@@ -24,7 +24,9 @@
 #include "sound_init.h"
 #include "thread6.h"
 #include "pc/configfile.h"
+
 #include "practice.h"
+#include "stats.h"
 
 #define INT_GROUND_POUND_OR_TWIRL (1 << 0) // 0x01
 #define INT_PUNCH                 (1 << 1) // 0x02
@@ -132,6 +134,8 @@ static u32 sBackwardKnockbackActions[][3] = {
 u8 sDisplayingDoorText = FALSE;
 u8 sJustTeleported = FALSE;
 u8 sPssSlideStarted = FALSE;
+
+extern u8 gUnbreakMusic;
 
 /**
  * Returns the type of hat Mario is wearing.
@@ -741,6 +745,7 @@ void reset_mario_pitch(struct MarioState *m) {
 u32 interact_coin(struct MarioState *m, UNUSED u32 interactType, struct Object *o) {
     m->numCoins += o->oDamageOrCoinValue;
     m->healCounter += 4 * o->oDamageOrCoinValue;
+	stats_collect_coins(o->oDamageOrCoinValue);
 
     o->oInteractStatus = INT_STATUS_INTERACTED;
 
@@ -773,6 +778,8 @@ u32 interact_star_or_key(struct MarioState *m, UNUSED u32 interactType, struct O
 			mario_stop_riding_and_holding(m);
 		
         queue_rumble_data(5, 80);
+		
+		stats_star_grab();
 
         if (!noExit) {
             m->hurtCounter = 0;
@@ -813,6 +820,7 @@ u32 interact_star_or_key(struct MarioState *m, UNUSED u32 interactType, struct O
         if (!noExit) {
             drop_queued_background_music();
             fadeout_level_music(126);
+			gUnbreakMusic = TRUE;
         }
 
         play_sound(SOUND_MENU_STAR_SOUND, m->marioObj->header.gfx.cameraToObject);
@@ -820,15 +828,20 @@ u32 interact_star_or_key(struct MarioState *m, UNUSED u32 interactType, struct O
         update_mario_sound_and_camera(m);
         // func_802521A0
 #endif
-
-        if (grandStar) {
-			section_timer_game_win();
+		practice_star_grab();
+		
+        if (grandStar){
+			practice_game_win();
             return set_mario_action(m, ACT_JUMBO_STAR_CUTSCENE, 0);
         }
 		
-		timer_freeze();
 		
         if (!configNonstop){
+			if ((starGrabAction==ACT_STAR_DANCE_EXIT||
+				starGrabAction==ACT_STAR_DANCE_WATER) && !noExit){
+				practice_star_xcam();
+			}
+			
 			return set_mario_action(m, starGrabAction, noExit + 2 * grandStar);
 		}
     }
@@ -870,6 +883,7 @@ u32 interact_warp(struct MarioState *m, UNUSED u32 interactType, struct Object *
                 m->usedObj = o;
 
                 sJustTeleported = TRUE;
+				timer_freeze();
                 return set_mario_action(m, ACT_TELEPORT_FADE_OUT, 0);
             }
         }
@@ -888,6 +902,7 @@ u32 interact_warp(struct MarioState *m, UNUSED u32 interactType, struct Object *
             }
 
             mario_stop_riding_object(m);
+			timer_freeze();
             return set_mario_action(m, ACT_DISAPPEARED, (WARP_OP_WARP_OBJECT << 16) + 2);
         }
     }
@@ -902,6 +917,8 @@ u32 interact_warp_door(struct MarioState *m, UNUSED u32 interactType, struct Obj
     u32 actionArg;
 
     if (m->action == ACT_WALKING || m->action == ACT_DECELERATING) {
+		timer_freeze();
+		
         if (warpDoorId == 1 && !(saveFlags & SAVE_FLAG_UNLOCKED_UPSTAIRS_DOOR)) {
             if (!(saveFlags & SAVE_FLAG_HAVE_KEY_2)) {
                 if (!sDisplayingDoorText) {
@@ -997,6 +1014,8 @@ u32 interact_door(struct MarioState *m, UNUSED u32 interactType, struct Object *
     s16 numStars = save_file_get_total_star_count(gCurrSaveFileNum - 1, COURSE_MIN - 1, COURSE_MAX - 1);
 
     if (m->action == ACT_WALKING || m->action == ACT_DECELERATING) {
+		timer_freeze();
+		
         if (numStars >= requiredNumStars) {
             u32 actionArg = should_push_or_pull_door(m, o);
             u32 enterDoorAction;
@@ -1019,8 +1038,6 @@ u32 interact_door(struct MarioState *m, UNUSED u32 interactType, struct Object *
             if (doorSaveFileFlag != 0 && !(save_file_get_flags() & doorSaveFileFlag)) {
                 enterDoorAction = ACT_UNLOCKING_STAR_DOOR;
             }
-			
-			timer_freeze();
 
             return set_mario_action(m, enterDoorAction, actionArg);
         } else if (!sDisplayingDoorText) {
@@ -1055,6 +1072,7 @@ u32 interact_door(struct MarioState *m, UNUSED u32 interactType, struct Object *
     } else if (m->action == ACT_IDLE && sDisplayingDoorText == TRUE && requiredNumStars == 70) {
         m->interactObj = o;
         m->usedObj = o;
+		timer_freeze();
         return set_mario_action(m, ACT_ENTERING_STAR_DOOR, should_push_or_pull_door(m, o));
     }
 

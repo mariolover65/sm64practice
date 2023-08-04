@@ -41,6 +41,7 @@
 #endif
 
 #include "game/save_state.h"
+#include "game/stats.h"
 #include "game/practice.h"
 
 OSMesg D_80339BEC;
@@ -111,8 +112,8 @@ void produce_one_frame(void) {
         create_next_audio_buffer(audio_buffer + i * (num_audio_samples * 2), num_audio_samples);
     }
     //printf("Audio samples before submitting: %d\n", audio_api->buffered());
-
-    audio_api->play((u8 *)audio_buffer, 2 * num_audio_samples * 4);
+	
+	audio_api->play((u8 *)audio_buffer, 2 * num_audio_samples * 4);
 
     gfx_end_frame();
 }
@@ -129,6 +130,9 @@ void game_deinit(void) {
     discord_shutdown();
 #endif
     configfile_save(configfile_name());
+	stats_save(PRACTICE_STATS_PATH);
+	stats_cleanup();
+	practice_deinit();
     controller_shutdown();
     audio_shutdown();
     gfx_shutdown();
@@ -153,7 +157,7 @@ static void request_anim_frame(void (*func)(double time)) {
 }
 
 static void on_anim_frame(double time) {
-    static double target_time;
+    static double target_time = 0.0;
 
     time *= 0.03; // milliseconds to frame count (33.333 ms -> 1)
 
@@ -162,15 +166,12 @@ static void on_anim_frame(double time) {
         // so reset, with a small margin to avoid potential jitter later.
         target_time = time - 0.010;
     }
-
-    for (int i = 0; i < 2; i++) {
-        // If refresh rate is 15 Hz or something we might need to generate two frames
-        if (time >= target_time) {
-            produce_one_frame();
-            target_time = target_time + 1.0;
-        }
-    }
-
+	
+	while (time >= target_time){
+		produce_one_frame();
+		target_time += 1.0;
+	}
+    
     if (inited) // only continue if the init flag is still set
         request_anim_frame(on_anim_frame);
 }
@@ -181,8 +182,11 @@ void main_func(void) {
     const char *gamedir = gCLIOpts.GameDir[0] ? gCLIOpts.GameDir : FS_BASEDIR;
     const char *userpath = gCLIOpts.SavePath[0] ? gCLIOpts.SavePath : sys_user_path();
     fs_init(sys_ropaths, gamedir, userpath);
-
+	
+	stats_init();
+	
     configfile_load(configfile_name());
+	stats_load(PRACTICE_STATS_PATH);
 
     if (gCLIOpts.FullScreen == 1)
         configWindow.fullscreen = true;
@@ -221,7 +225,7 @@ void main_func(void) {
     #endif
 
     char window_title[128] =
-    "Super Mario 64 EX SPEEDRUN (" RAPI_NAME ")"
+    "sm64practice (" RAPI_NAME ")"
     #ifdef NIGHTLY
     " nightly " GIT_HASH
     #endif
@@ -277,7 +281,10 @@ void main_func(void) {
             gResetTrigger = 0;
             soft_reset();
         }
-        wm_api->main_loop(produce_one_frame);
+		if (gDisableRendering)
+			game_loop_one_iteration();
+		else
+			wm_api->main_loop(produce_one_frame);
 #ifdef DISCORDRPC
         discord_update_rich_presence();
 #endif

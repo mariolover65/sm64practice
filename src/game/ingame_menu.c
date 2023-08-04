@@ -99,7 +99,7 @@ u8 gDialogCharWidths[256] = { // TODO: Is there a way to auto generate this?
 #ifdef VERSION_EU
     7,  5, 10,  5,  9,  8,  4,  0,  0,  0,  0,  5,  5,  6,  5,  0,
 #else
-    7,  5, 10,  5,  9,  8,  4,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+    6,  5, 10,  5,  9,  8,  4,  0,  0,  0,  0,  0,  0,  0,  0,  0,
 #endif
     0,  0,  5,  7,  7,  6,  6,  8,  0,  8, 10,  6,  4, 10,  0,  0
 };
@@ -2129,13 +2129,24 @@ void change_dialog_camera_angle(void) {
 }
 
 void shade_screen(void) {
-    create_dl_translation_matrix(MENU_MTX_PUSH, GFX_DIMENSIONS_FROM_LEFT_EDGE(0), 240.0f, 0);
+    create_dl_translation_matrix(MENU_MTX_PUSH, GFX_DIMENSIONS_FROM_LEFT_EDGE(0), SCREEN_HEIGHT, 0);
 
     // This is a bit weird. It reuses the dialog text box (width 130, height -80),
     // so scale to at least fit the screen.
 
     create_dl_scale_matrix(MENU_MTX_NOPUSH,
                            GFX_DIMENSIONS_ASPECT_RATIO * SCREEN_HEIGHT / 130.0f, 3.0f, 1.0f);
+
+    gDPSetEnvColor(gDisplayListHead++, 0, 0, 0, 110);
+    gSPDisplayList(gDisplayListHead++, dl_draw_text_bg_box);
+    gSPPopMatrix(gDisplayListHead++, G_MTX_MODELVIEW);
+}
+
+void shade_screen_rect(s32 x,s32 y,s32 w,s32 h){
+	create_dl_translation_matrix(MENU_MTX_PUSH, x, SCREEN_HEIGHT-y, 0);
+
+    create_dl_scale_matrix(MENU_MTX_NOPUSH,
+                            (SCREEN_WIDTH / 130.0f) / SCREEN_WIDTH * w, 3.0f / SCREEN_HEIGHT * h, 1.0f);
 
     gDPSetEnvColor(gDisplayListHead++, 0, 0, 0, 110);
     gSPDisplayList(gDisplayListHead++, dl_draw_text_bg_box);
@@ -3076,16 +3087,14 @@ s16 render_course_complete_screen(void) {
     return 0;
 }
 
-char gTimerText[16];
+char gTimerText[32];
 f32 gCurrTextScale = 1.0f;
 
 void set_timer_text(s32 time){
 	s32 centi,second,minute,hour;
-	char backwards[16];
+	char backwards[20];
 	s16 count = 0;
 	s16 i;
-	
-	time = (time>=10799999) ? 10799999 : time;
 	
 	centi = ((time%30)*100)/30;
 	second = (time/30)%60;
@@ -3101,12 +3110,88 @@ void set_timer_text(s32 time){
 	backwards[count++] = minute%10+'0';
 	if (hour||minute>9){
 		backwards[count++] = minute/10+'0';
+		
 		if (hour){
 			backwards[count++] = ':';
+		}
+		
+		while (hour){
 			backwards[count++] = hour%10+'0';
-			if (hour>9){
-				backwards[count++] = hour/10+'0';
+			hour /= 10;
+		}
+	}
+	
+	for (i=count-1;i>=0;--i){
+		gTimerText[count-1-i] = backwards[i];
+	}
+	gTimerText[count] = 0;
+}
+
+void set_timer_text_small(s32 time){
+	s32 centi,second,minute,hour;
+	char backwards[20];
+	s16 count = 0;
+	s16 i;
+	
+	centi = ((time%30)*100)/30;
+	second = (time/30)%60;
+	minute = (time/1800)%60;
+	hour = (time/108000);
+	
+	backwards[count++] = centi%10+'0';
+	backwards[count++] = centi/10+'0';
+	backwards[count++] = '.';
+	backwards[count++] = second%10+'0';
+	if (hour||minute||second>9){
+		backwards[count++] = second/10+'0';
+		if (hour||minute){
+			backwards[count++] = ':';
+			backwards[count++] = minute%10+'0';
+			if (hour||minute>9){
+				backwards[count++] = minute/10+'0';
+				
+				if (hour){
+					backwards[count++] = ':';
+				}
+				
+				while (hour){
+					backwards[count++] = hour%10+'0';
+					hour /= 10;
+				}
 			}
+		}
+	}
+	
+	for (i=count-1;i>=0;--i){
+		gTimerText[count-1-i] = backwards[i];
+	}
+	gTimerText[count] = 0;
+}
+
+void set_timer_text_rough(s32 time){
+	s32 second,minute,hour;
+	char backwards[20];
+	s16 count = 0;
+	s16 i;
+	
+	second = (time/30)%60;
+	minute = (time/1800)%60;
+	hour = (time/108000);
+	
+	backwards[count++] = second%10+'0';
+	backwards[count++] = second/10+'0';
+	backwards[count++] = ':';
+	backwards[count++] = minute%10+'0';
+	if (hour||minute>9){
+		backwards[count++] = minute/10+'0';
+		
+		if (hour){
+			backwards[count++] = ':';
+		}
+		
+		while (hour){
+			backwards[count++] = hour%10+'0';
+			hour /= 10;
 		}
 	}
 	
@@ -3157,6 +3242,9 @@ void convert_text(u8* text){
 			case '\'':
 				text[i] = 0x3E;
 				break;
+			case '/':
+				text[i] = 0xE0;
+				break;
 			case '&':
 				text[i] = 0xE5;
 				break;
@@ -3167,10 +3255,19 @@ void convert_text(u8* text){
 				text[i] = 0xE1;
 				break;
 			case ')':
-				text[i] = 0xE2;
+				text[i] = 0xE3;
 				break;
 			case '-':
 				text[i] = 0x9F;
+				break;
+			case '+':
+				text[i] = 0xE4;
+				break;
+			case '~':
+				text[i] = 0xF7;
+				break;
+			case '$':
+				text[i] = 0xF9;
 				break;
 			default:
 				text[i] = ASCII_TO_DIALOG(text[i]);
@@ -3210,7 +3307,7 @@ s32 get_text_width(const char* text){
 	for (u32 i=0;i<len;++i){
 		x += gDialogCharWidths[(u8)gCopyArea[i]];
 	}
-	return x;
+	return (s32)((f32)x*gCurrTextScale);
 }
 
 void render_text_string_at(s16 x,s16 y,const char* text){

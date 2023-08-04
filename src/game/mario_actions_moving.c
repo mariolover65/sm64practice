@@ -15,6 +15,7 @@
 #include "pc/configfile.h"
 
 #include "practice.h"
+#include "replay.h"
 
 struct LandingAction {
     s16 numFrames;
@@ -1855,8 +1856,12 @@ s32 act_long_jump_land(struct MarioState *m) {
     }
 
     if (common_landing_cancels(m, &sLongJumpLandAction, set_jumping_action)) {
-		if (m->input & INPUT_A_PRESSED)
+		if (m->input & INPUT_A_PRESSED){
 			timer_freeze();
+			if (m->forwardVel<0.0f && gCurrRecordingReplay){
+				gCurrRecordingReplay->flags |= REPLAY_FLAG_BLJ;
+			}
+		}
         return TRUE;
     }
 

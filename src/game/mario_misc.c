@@ -23,6 +23,8 @@
 #include "save_file.h"
 #include "skybox.h"
 #include "sound_init.h"
+#include "replay.h"
+#include "pc/configfile.h"
 
 #define TOAD_STAR_1_REQUIREMENT 12
 #define TOAD_STAR_2_REQUIREMENT 25
@@ -299,7 +301,7 @@ void bhv_unlock_door_star_loop(void) {
 /**
  * Generate a display list that sets the correct blend mode and color for mirror Mario.
  */
-static Gfx *make_gfx_mario_alpha(struct GraphNodeGenerated *node, s16 alpha) {
+static Gfx *make_gfx_mario_alpha(struct GraphNodeGenerated *node, s16 alpha, u32 mode) {
     Gfx *gfx;
     Gfx *gfxHead = NULL;
 
@@ -307,16 +309,19 @@ static Gfx *make_gfx_mario_alpha(struct GraphNodeGenerated *node, s16 alpha) {
         node->fnNode.node.flags = (node->fnNode.node.flags & 0xFF) | (LAYER_OPAQUE << 8);
         gfxHead = alloc_display_list(2 * sizeof(*gfxHead));
         gfx = gfxHead;
+		//gDPSetAlphaCompare(gfx++, G_AC_NONE);
     } else {
         node->fnNode.node.flags = (node->fnNode.node.flags & 0xFF) | (LAYER_TRANSPARENT << 8);
         gfxHead = alloc_display_list(3 * sizeof(*gfxHead));
         gfx = gfxHead;
-        gDPSetAlphaCompare(gfx++, G_AC_DITHER);
+        gDPSetAlphaCompare(gfx++, mode); //G_AC_DITHER
     }
     gDPSetEnvColor(gfx++, 255, 255, 255, alpha);
     gSPEndDisplayList(gfx);
     return gfxHead;
 }
+
+u8 gCurrentIsGhost = FALSE;
 
 /**
  * Sets the correct blend mode and color for mirror Mario.
@@ -327,11 +332,25 @@ Gfx *geo_mirror_mario_set_alpha(s32 callContext, struct GraphNode *node, UNUSED 
     struct GraphNodeGenerated *asGenerated = (struct GraphNodeGenerated *) node;
     struct MarioBodyState *bodyState = &gBodyStates[asGenerated->parameter];
     s16 alpha;
+	u32 mode;
     UNUSED u8 unused2[4];
 
     if (callContext == GEO_CONTEXT_RENDER) {
-        alpha = (bodyState->modelState & 0x100) ? (bodyState->modelState & 0xFF) : 255;
-        gfx = make_gfx_mario_alpha(asGenerated, alpha);
+		gCurrentIsGhost = FALSE;
+		if (configUseGhost){
+			gCurrentIsGhost = ghost_is_parent(node);
+		}
+		if (gCurrentIsGhost){
+			alpha = (configGhostOpacity&0xFF);
+			if (configGhostDistanceFade)
+				alpha *= gGhostDistanceScaling;
+			mode = G_AC_THRESHOLD;
+		} else {
+			alpha = (bodyState->modelState & 0x100) ? (bodyState->modelState & 0xFF) : 255;
+			mode = (bodyState->modelState & 0x800) ? G_AC_THRESHOLD : G_AC_DITHER;
+		}
+		
+        gfx = make_gfx_mario_alpha(asGenerated, alpha, mode);
     }
     return gfx;
 }
@@ -383,7 +402,7 @@ Gfx *geo_mario_tilt_torso(s32 callContext, struct GraphNode *node, UNUSED Mat4 *
     struct MarioBodyState *bodyState = &gBodyStates[asGenerated->parameter];
     s32 action = bodyState->action;
 
-    if (callContext == GEO_CONTEXT_RENDER) {
+    if (callContext == GEO_CONTEXT_RENDER && !gCurrentIsGhost) {
         struct GraphNodeRotation *rotNode = (struct GraphNodeRotation *) node->next;
 
         if (action != ACT_BUTT_SLIDE && action != ACT_HOLD_BUTT_SLIDE && action != ACT_WALKING
@@ -405,7 +424,7 @@ Gfx *geo_mario_head_rotation(s32 callContext, struct GraphNode *node, UNUSED Mat
     struct MarioBodyState *bodyState = &gBodyStates[asGenerated->parameter];
     s32 action = bodyState->action;
 
-    if (callContext == GEO_CONTEXT_RENDER) {
+    if (callContext == GEO_CONTEXT_RENDER && !gCurrentIsGhost) {
         struct GraphNodeRotation *rotNode = (struct GraphNodeRotation *) node->next;
         struct Camera *camera = gCurGraphNodeCamera->config.camera;
 
@@ -465,7 +484,7 @@ Gfx *geo_mario_hand_foot_scaler(s32 callContext, struct GraphNode *node, UNUSED 
 
     if (callContext == GEO_CONTEXT_RENDER) {
         scaleNode->scale = 1.0f;
-        if (asGenerated->parameter == bodyState->punchState >> 6) {
+        if (asGenerated->parameter == bodyState->punchState >> 6 && !gCurrentIsGhost) {
             if (sMarioAttackAnimCounter != gAreaUpdateCounter && (bodyState->punchState & 0x3F) > 0) {
                 bodyState->punchState -= 1;
                 sMarioAttackAnimCounter = gAreaUpdateCounter;
@@ -486,7 +505,12 @@ Gfx *geo_switch_mario_cap_effect(s32 callContext, struct GraphNode *node, UNUSED
     struct MarioBodyState *bodyState = &gBodyStates[switchCase->numCases];
 
     if (callContext == GEO_CONTEXT_RENDER) {
-        switchCase->selectedCase = bodyState->modelState >> 8;
+		if (gCurrentIsGhost){
+			// vanish cap case
+			switchCase->selectedCase = gCurrGhostFrame->model | 1;
+		} else {
+			switchCase->selectedCase = bodyState->modelState >> 8;
+		}
     }
     return NULL;
 }
@@ -499,12 +523,19 @@ Gfx *geo_switch_mario_cap_on_off(s32 callContext, struct GraphNode *node, UNUSED
     struct GraphNode *next = node->next;
     struct GraphNodeSwitchCase *switchCase = (struct GraphNodeSwitchCase *) node;
     struct MarioBodyState *bodyState = &gBodyStates[switchCase->numCases];
+	
+	s8 capState;
+	if (gCurrentIsGhost){
+		capState = gCurrGhostFrame->cap;
+	} else {
+		capState = bodyState->capState;
+	}
 
     if (callContext == GEO_CONTEXT_RENDER) {
-        switchCase->selectedCase = bodyState->capState & 1;
+        switchCase->selectedCase = capState & 1;
         while (next != node) {
             if (next->type == GRAPH_NODE_TYPE_TRANSLATION_ROTATION) {
-                if (bodyState->capState & 2) {
+                if (capState & 2) {
                     next->flags |= GRAPH_RENDER_ACTIVE;
                 } else {
                     next->flags &= ~GRAPH_RENDER_ACTIVE;
@@ -549,6 +580,8 @@ Gfx *geo_switch_mario_hand_grab_pos(s32 callContext, struct GraphNode *b, Mat4 *
     Mat4 *curTransform = mtx;
     struct MarioState *marioState = &gMarioStates[asHeldObj->playerIndex];
 
+	if (gCurrentIsGhost) return NULL;
+
     if (callContext == GEO_CONTEXT_RENDER) {
         asHeldObj->objNode = NULL;
         if (marioState->heldObj != NULL) {
@@ -573,8 +606,9 @@ Gfx *geo_switch_mario_hand_grab_pos(s32 callContext, struct GraphNode *b, Mat4 *
         // ! The HOLP is set here, which is why it only updates when the held object is drawn.
         // This is why it won't update during a pause buffered hitstun or when the camera is very far
         // away.
-        get_pos_from_transform_mtx(marioState->marioBodyState->heldObjLastPosition, *curTransform,
-                                   *gCurGraphNodeCamera->matrixPtr);
+		
+		get_pos_from_transform_mtx(marioState->marioBodyState->heldObjLastPosition, *curTransform,
+								   *gCurGraphNodeCamera->matrixPtr);
     }
     return NULL;
 }

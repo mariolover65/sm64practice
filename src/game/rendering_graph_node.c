@@ -640,6 +640,8 @@ static void geo_process_shadow(struct GraphNodeShadow *node) {
     f32 cosAng;
     struct GraphNode *geo;
     Mtx *mtx;
+	
+	u8 isGhost = ghost_is_parent(node);
 
     if (gCurGraphNodeCamera != NULL && gCurGraphNodeObject != NULL) {
         if (gCurGraphNodeHeldObject != NULL) {
@@ -677,9 +679,11 @@ static void geo_process_shadow(struct GraphNodeShadow *node) {
                 shadowPos[2] += -animOffset[0] * sinAng + animOffset[2] * cosAng;
             }
         }
-
+		
+		
         shadowList = create_shadow_below_xyz(shadowPos[0], shadowPos[1], shadowPos[2], shadowScale,
                                              node->shadowSolidity, node->shadowType);
+		
         if (shadowList != NULL) {
             mtx = alloc_display_list(sizeof(*mtx));
             gMatStackIndex++;
@@ -687,7 +691,7 @@ static void geo_process_shadow(struct GraphNodeShadow *node) {
             mtxf_mul(gMatStack[gMatStackIndex], mtxf, *gCurGraphNodeCamera->matrixPtr);
             mtxf_to_mtx(mtx, gMatStack[gMatStackIndex]);
             gMatStackFixed[gMatStackIndex] = mtx;
-            if (gShadowAboveWaterOrLava == 1) {
+            if (gShadowAboveWaterOrLava == 1 && !isGhost) {
                 geo_append_display_list((void *) VIRTUAL_TO_PHYSICAL(shadowList), 4);
             } else if (gMarioOnIceOrCarpet == 1) {
                 geo_append_display_list((void *) VIRTUAL_TO_PHYSICAL(shadowList), 5);
@@ -757,7 +761,7 @@ static int obj_is_in_view(struct GraphNodeObject *node, Mat4 matrix) {
 
     // This multiplication should really be performed on 4:3 as well,
     // but the issue will be more apparent on widescreen.
-    hScreenEdge *= GFX_DIMENSIONS_ASPECT_RATIO;
+    //hScreenEdge *= GFX_DIMENSIONS_ASPECT_RATIO;
 
     if (geo != NULL && geo->type == GRAPH_NODE_TYPE_CULLING_RADIUS) {
         cullingRadius =

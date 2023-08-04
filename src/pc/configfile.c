@@ -98,11 +98,24 @@ bool         configDiscordRPC       = true;
 #endif
 
 bool configShowPos = false;
+bool configShowHOLP = false;
+bool configShowAngle = false;
 bool configShowVel = false;
 bool configShowMaxHeight = false;
-u32 configSectionTimerType = 0;
 bool configShowWallkickFrame = false;
 bool configShowWallkickAngle = false;
+bool configShowBowserInfo = false;
+bool configShowRNGInfo = false;
+bool configShowEfficiency = false;
+bool configUseGhost = false;
+bool configGhostDistanceFade = true;
+bool configResetMusic = false;
+bool configDisableMusic = false;
+
+u32 configAngleDisplayType = 0;
+u32 configStageText = 0;
+u32 configPracticeType = 1;
+u32 configGhostOpacity = 96;
 
 static const struct ConfigOption options[] = {
     {.name = "fullscreen",           .type = CONFIG_TYPE_BOOL, .boolValue = &configWindow.fullscreen},
@@ -157,18 +170,30 @@ static const struct ConfigOption options[] = {
 	
 	{.name = "practice_show_vel",              .type = CONFIG_TYPE_BOOL, .boolValue = &configShowVel},
 	{.name = "practice_show_pos",              .type = CONFIG_TYPE_BOOL, .boolValue = &configShowPos},
+	{.name = "practice_show_holp",             .type = CONFIG_TYPE_BOOL, .boolValue = &configShowHOLP},
+	{.name = "practice_show_angle",            .type = CONFIG_TYPE_BOOL, .boolValue = &configShowAngle},
 	{.name = "practice_show_max_height",       .type = CONFIG_TYPE_BOOL, .boolValue = &configShowMaxHeight},
 	{.name = "practice_show_wallkick_frame",   .type = CONFIG_TYPE_BOOL, .boolValue = &configShowWallkickFrame},
 	{.name = "practice_show_wallkick_angle",   .type = CONFIG_TYPE_BOOL, .boolValue = &configShowWallkickAngle},
+	{.name = "practice_show_bowser_info",      .type = CONFIG_TYPE_BOOL, .boolValue = &configShowBowserInfo},
+	{.name = "practice_show_rng_info",         .type = CONFIG_TYPE_BOOL, .boolValue = &configShowRNGInfo},
+	{.name = "practice_show_efficiency",       .type = CONFIG_TYPE_BOOL, .boolValue = &configShowEfficiency},
+	{.name = "practice_use_ghost",             .type = CONFIG_TYPE_BOOL, .boolValue = &configUseGhost},
+	{.name = "practice_ghost_distance_fade",   .type = CONFIG_TYPE_BOOL, .boolValue = &configGhostDistanceFade},
+	{.name = "practice_reset_music",           .type = CONFIG_TYPE_BOOL, .boolValue = &configResetMusic},
+	{.name = "practice_disable_music",         .type = CONFIG_TYPE_BOOL, .boolValue = &configDisableMusic},
 	
-	{.name = "practice_section_timer_type",    .type = CONFIG_TYPE_UINT, .uintValue = &configSectionTimerType},
+	{.name = "practice_type",                  .type = CONFIG_TYPE_UINT, .uintValue = &configPracticeType},
+	{.name = "practice_angle_display_type",    .type = CONFIG_TYPE_UINT, .uintValue = &configAngleDisplayType},
+	{.name = "practice_stage_text",            .type = CONFIG_TYPE_UINT, .uintValue = &configStageText},
+	{.name = "practice_ghost_opacity",         .type = CONFIG_TYPE_UINT, .uintValue = &configGhostOpacity},
 };
 
 // Reads an entire line from a file (excluding the newline character) and returns an allocated string
 // Returns NULL if no lines could be read from the file
 static char *read_file_line(fs_file_t *file) {
     char *buffer;
-    size_t bufferSize = 8;
+    size_t bufferSize = 64;
     size_t offset = 0; // offset in buffer to write
 
     buffer = malloc(bufferSize);

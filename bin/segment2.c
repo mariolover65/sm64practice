@@ -1800,6 +1800,11 @@ ALIGNED8 static const u8 texture_hud_char_arrow_down[] = {
 #include "textures/segment2/segment2.081D0.rgba16.inc.c"
 };
 
+// custom
+ALIGNED8 const u8 texture_font_char_us_custom_slash[] = {
+#include "extdata/textures/font_graphics.custom_slash.ia4.inc.c"
+};
+
 // Main HUD print table 0x02008250-0x02008337
 const u8 *const main_hud_lut[] = {
 #ifdef VERSION_EU
@@ -1979,7 +1984,7 @@ const u8 *const main_font_lut[] = {
                   0x0,               0x0,               0x0,               0x0,
                   0x0,               0x0,               0x0,               0x0,
                   0x0,               0x0,               0x0,               0x0,
-                  0x0, texture_font_char_us_open_parentheses, texture_font_char_us_close_open_parentheses, texture_font_char_us_close_parentheses,
+    texture_font_char_us_custom_slash, texture_font_char_us_open_parentheses, texture_font_char_us_close_open_parentheses, texture_font_char_us_close_parentheses,
     texture_font_char_us_left_right_arrow, texture_font_char_us_ampersand, texture_font_char_us_ellipsis,               0x0,
                   0x0,               0x0,               0x0,               0x0,
                   0x0,               0x0,               0x0,               0x0,

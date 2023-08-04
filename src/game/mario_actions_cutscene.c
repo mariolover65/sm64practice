@@ -30,6 +30,7 @@
 #include "thread6.h"
 #include "../../include/libc/stdlib.h"
 #include "pc/pc_main.h"
+#include "pc/configfile.h"
 
 #include "practice.h"
 
@@ -238,6 +239,9 @@ s32 get_star_collection_dialog(struct MarioState *m) {
     s32 i;
     s32 dialogID = 0;
     s32 numStarsRequired;
+	
+	// ignore this textbox
+	if (configStageText==2) return 0;
 
     for (i = 0; i < 6; i++) {
         numStarsRequired = sStarsNeededForDialog[i];
@@ -442,8 +446,10 @@ s32 act_disappeared(struct MarioState *m) {
         m->actionArg--;
         if ((m->actionArg & 0xFFFF) == 0) {
             level_trigger_warp(m, m->actionArg >> 16);
+			practice_level_change_trigger();
         }
     }
+	
     return FALSE;
 }
 
@@ -675,14 +681,16 @@ s32 act_fall_after_star_grab(struct MarioState *m) {
     if (m->pos[1] < m->waterLevel - 130) {
         play_sound(SOUND_ACTION_UNKNOWN430, m->marioObj->header.gfx.cameraToObject);
         m->particleFlags |= PARTICLE_WATER_SPLASH;
-		section_timer_star_xcam();
+		if ((m->actionArg & 1) == 0)
+			practice_star_xcam();
         return set_mario_action(m, ACT_STAR_DANCE_WATER, m->actionArg);
     }
     if (perform_air_step(m, 1) == AIR_STEP_LANDED) {
         play_mario_landing_sound(m, SOUND_ACTION_TERRAIN_LANDING);
         set_mario_action(m, m->actionArg & 1 ? ACT_STAR_DANCE_NO_EXIT : ACT_STAR_DANCE_EXIT,
                          m->actionArg);
-		section_timer_star_xcam();
+	    if ((m->actionArg & 1) == 0)
+			practice_star_xcam();
     }
     set_mario_animation(m, MARIO_ANIM_GENERAL_FALL);
     return FALSE;

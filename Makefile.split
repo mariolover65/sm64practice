@@ -6,6 +6,7 @@
 SEGMENTS := $(notdir $(basename $(wildcard bin/*.c))) $(addprefix $(VERSION)/,$(notdir $(basename $(wildcard bin/$(VERSION)/*.c)))) $(addsuffix _skybox,$(notdir $(basename $(wildcard textures/skyboxes/*.png))))
 ACTORS := $(filter %/,$(wildcard actors/*/))
 TEXTURE_DIRS := $(addprefix textures/,$(SEGMENTS)) $(ACTORS) textures/crash_screen textures/intro_raw textures/ipl3_raw textures/skybox_tiles
+EXTDATA_DIRS := extdata/textures
 
 # NOTE: textures assume naming convention "texture.<encoding>.png" generates "texture.<encoding>"
 
@@ -190,8 +191,12 @@ MACHINE_FILES                := $(patsubst %.png,%.inc.c,$(wildcard $(TEXTURE_DI
 MOUNTAIN_FILES               := $(patsubst %.png,%.inc.c,$(wildcard $(TEXTURE_DIR)/mountain/*.png))
 GRASS_FILES                  := $(patsubst %.png,%.inc.c,$(wildcard $(TEXTURE_DIR)/grass/*.png))
 
+PRACTICE_FILES               := $(patsubst %.png,%.inc.c,$(wildcard $(EXTDATA_DIR)/textures/*.png))
+
 # Texture Files
-$(BUILD_DIR)/bin/segment2.o: $(addprefix $(BUILD_DIR)/,$(SEGMENT2_FILES))
+$(BUILD_DIR)/bin/practice.o: $(addprefix $(BUILD_DIR)/,$(PRACTICE_FILES))
+
+$(BUILD_DIR)/bin/segment2.o: $(BUILD_DIR)/bin/practice.o $(addprefix $(BUILD_DIR)/,$(SEGMENT2_FILES))
 $(BUILD_DIR)/bin/title_screen_bg.o: $(addprefix $(BUILD_DIR)/,$(TITLE_SCREEN_BG_FILES))
 $(BUILD_DIR)/bin/spooky.o: $(addprefix $(BUILD_DIR)/,$(SPOOKY_FILES))
 $(BUILD_DIR)/bin/generic.o: $(addprefix $(BUILD_DIR)/,$(GENERIC_FILES))
@@ -206,6 +211,8 @@ $(BUILD_DIR)/bin/sky.o: $(addprefix $(BUILD_DIR)/,$(SKY_FILES))
 $(BUILD_DIR)/bin/machine.o: $(addprefix $(BUILD_DIR)/,$(MACHINE_FILES))
 $(BUILD_DIR)/bin/mountain.o: $(addprefix $(BUILD_DIR)/,$(MOUNTAIN_FILES))
 $(BUILD_DIR)/bin/grass.o: $(addprefix $(BUILD_DIR)/,$(GRASS_FILES))
+
+
 
 # Others
 $(BUILD_DIR)/bin/segment2.elf: SEGMENT_ADDRESS := 0x02000000

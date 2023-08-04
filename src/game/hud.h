@@ -36,4 +36,6 @@ extern s32 sPowerMeterVisibleTimer;
 void set_hud_camera_status(s16 status);
 void render_hud(void);
 
+void render_hud_tex_lut(s32 x, s32 y, u8 *texture);
+
 #endif // HUD_H

@@ -6,9 +6,9 @@ void bhv_init_changing_water_level_loop(void) {
         if (gEnvironmentRegions != NULL)
             gCurrentObject->oAction++;
     } else if (gCurrentObject->oTimer < 10)
-        *gEnvironmentLevels = gEnvironmentRegions[6];
+        gEnvironmentLevels[0] = gEnvironmentRegions[6];
     else {
-        gEnvironmentRegions[6] = *gEnvironmentLevels + sins(o->oWaterLevelTriggerUnkF4) * 20.0f;
+        gEnvironmentRegions[6] = gEnvironmentLevels[0] + sins(o->oWaterLevelTriggerUnkF4) * 20.0f;
         gCurrentObject->oWaterLevelTriggerUnkF4 += 0x200;
     }
 }
@@ -32,9 +32,9 @@ void bhv_water_level_diamond_loop(void) {
                 break;
             case WATER_LEVEL_DIAMOND_ACT_CHANGE_WATER_LEVEL:
                 o->oAngleVelYaw = 0;
-                *gEnvironmentLevels = (s32) approach_f32_symmetric(
-                    (f32) *gEnvironmentLevels, (f32) o->oWaterLevelTriggerTargetWaterLevel, 10.0f);
-                if (*gEnvironmentLevels == o->oWaterLevelTriggerTargetWaterLevel) {
+                gEnvironmentLevels[0] = (s32) approach_f32_symmetric(
+                    (f32) gEnvironmentLevels[0], (f32) o->oWaterLevelTriggerTargetWaterLevel, 10.0f);
+                if (gEnvironmentLevels[0] == o->oWaterLevelTriggerTargetWaterLevel) {
                     if ((s16) o->oFaceAngleYaw == 0)
                         o->oAction++; // Sets to WATER_LEVEL_DIAMOND_ACT_IDLE_SPINNING
                     else
@@ -43,7 +43,7 @@ void bhv_water_level_diamond_loop(void) {
                     if (o->oTimer == 0)
                         cur_obj_play_sound_2(SOUND_GENERAL_WATER_LEVEL_TRIG);
                     else {
-                        if (*gEnvironmentLevels > o->oWaterLevelTriggerTargetWaterLevel)
+                        if (gEnvironmentLevels[0] > o->oWaterLevelTriggerTargetWaterLevel)
                             cur_obj_play_sound_1(SOUND_ENV_WATER_DRAIN);
                         else
                             cur_obj_play_sound_1(SOUND_ENV_WATER_DRAIN); // same as above

@@ -32,8 +32,8 @@ extern OSMesg D_80339CD4;
 extern struct VblankHandler gGameVblankHandler;
 extern uintptr_t gPhysicalFrameBuffers[3];
 extern uintptr_t gPhysicalZBuffer;
-extern void *D_80339CF0;
-extern void *D_80339CF4;
+extern void *gMarioAnimMemPool;
+extern void *gDemoInputsMemPool;
 extern struct SPTask *gGfxSPTask;
 extern Gfx *gDisplayListHead;
 extern u8 *gGfxPoolEnd;
@@ -72,5 +72,6 @@ void config_gfx_pool(void);
 void display_and_vsync(void);
 
 void copy_to_player_3(void);
+void adjust_analog_stick(struct Controller*);
 
 #endif // GAME_INIT_H

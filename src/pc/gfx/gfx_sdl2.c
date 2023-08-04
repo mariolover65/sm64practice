@@ -62,6 +62,9 @@ static double perf_freq = 0.0;
 
 extern s8 gResetTrigger;
 
+extern char gTextInputString[256];
+extern u8 gTextInputSubmitted;
+
 const SDL_Scancode windows_scancode_table[] = {
   /*  0                        1                            2                         3                            4                     5                            6                            7  */
   /*  8                        9                            A                         B                            C                     D                            E                            F  */
@@ -233,6 +236,18 @@ static void gfx_sdl_onkeydown(int scancode) {
 	if (state[SDL_SCANCODE_F1]){
 		gResetTrigger = 1;
 	}
+	
+	if (state[SDL_SCANCODE_BACKSPACE]){
+		u32 len = strnlen(gTextInputString,sizeof(gTextInputString)-1);
+		if (len>0)
+			gTextInputString[len-1] = 0;
+	}
+	if (state[SDL_SCANCODE_RETURN]){
+		u32 len = strnlen(gTextInputString,sizeof(gTextInputString)-1);
+		if (len>0){
+			gTextInputSubmitted = TRUE;
+		}
+	}
 }
 
 static void gfx_sdl_onkeyup(int scancode) {
@@ -253,6 +268,9 @@ static void gfx_sdl_handle_events(void) {
                 gfx_sdl_onkeyup(event.key.keysym.scancode);
                 break;
 #endif
+			case SDL_TEXTINPUT:
+				strncat(gTextInputString,event.text.text,sizeof(gTextInputString)-strnlen(gTextInputString,sizeof(gTextInputString)-1)-1);
+				break;
             case SDL_WINDOWEVENT: // TODO: Check if this makes sense to be included in the Web build
                 if (!IS_FULLSCREEN()) {
                     switch (event.window.event) {

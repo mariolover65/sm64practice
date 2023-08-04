@@ -297,6 +297,9 @@ struct MovtexObject gMovtexColored2[] = {
     { 0x00000000, 0x00000000, 0, NULL, NULL, NULL, NULL, 0x00, 0x00, 0x00, 0x00, 0x00000000 },
 };
 
+extern s32 gPracticeWDWHeight;
+extern void practice_update_wdw_height(void);
+
 /**
  * Sets the initial water level in Wet-Dry World based on how high Mario
  * jumped into the painting.
@@ -313,15 +316,19 @@ Gfx *geo_wdw_set_initial_water_level(s32 callContext, UNUSED struct GraphNode *n
                && gWdwWaterLevelSet == 0) {
         if (gPaintingMarioYEntry <= 1382.4) {
             wdwWaterHeight = 31;
+			gPracticeWDWHeight = 0;
         } else if (gPaintingMarioYEntry >= 1600.0) {
             wdwWaterHeight = 2816;
+			gPracticeWDWHeight = 2;
         } else {
             wdwWaterHeight = 1024;
+			gPracticeWDWHeight = 1;
         }
         for (i = 0; i < *gEnvironmentRegions; i++) {
             gEnvironmentRegions[i * 6 + 6] = wdwWaterHeight;
         }
         gWdwWaterLevelSet = 1;
+		practice_update_wdw_height();
     }
     return NULL;
 }

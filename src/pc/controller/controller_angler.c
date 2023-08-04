@@ -11,6 +11,8 @@
 #define ANGLER_E_SCANCODE 18
 #define ANGLER_R_SCANCODE 19
 
+#define ANGLER_Y_SCANCODE 21
+
 #define ANGLER_A_SCANCODE 30
 #define ANGLER_S_SCANCODE 31
 #define ANGLER_D_SCANCODE 32
@@ -39,6 +41,8 @@
 #define ANGLER_NP_7_SCANCODE 71
 #define ANGLER_NP_8_SCANCODE 72
 #define ANGLER_NP_9_SCANCODE 73
+
+#define ANGLER_7_SCANCODE 8
 
 #define ANGLER_NP_ENTER_SCANCODE 284
 #define ANGLER_NP_DOT_SCANCODE 83
@@ -231,7 +235,7 @@ static void update_buttons(void) {
 	if (angler_keys_array[ANGLER_NP_3_SCANCODE]||angler_keys_array[ANGLER_NP_1_SCANCODE]){
 		angler_buttons |= A_BUTTON;
 	}
-	if (angler_keys_array[ANGLER_NP_2_SCANCODE]||angler_keys_array[ANGLER_LCTRL_SCANCODE]){
+	if (angler_keys_array[ANGLER_NP_2_SCANCODE]||angler_keys_array[ANGLER_LCTRL_SCANCODE]||angler_keys_array[ANGLER_TAB_SCANCODE]){
 		angler_buttons |= B_BUTTON;
 	}
 	if (angler_keys_array[ANGLER_NP_ENTER_SCANCODE]){

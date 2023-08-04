@@ -14,6 +14,7 @@
 #include "seq_ids.h"
 #include "sm64.h"
 #include "sound_init.h"
+#include "pc/configfile.h"
 #include "thread6.h"
 
 #define MUSIC_NONE 0xFFFF
@@ -206,7 +207,7 @@ void set_background_music(u16 a, u16 seqArgs, s16 fadeTimer) {
             sound_reset(a);
         }
 
-        if (!(gShouldNotPlayCastleMusic && seqArgs == SEQ_LEVEL_INSIDE_CASTLE)) {
+        if (!(gShouldNotPlayCastleMusic && seqArgs == SEQ_LEVEL_INSIDE_CASTLE) && !configDisableMusic) {
             play_music(SEQ_PLAYER_LEVEL, seqArgs, fadeTimer);
             sCurrentMusic = seqArgs;
         }
@@ -236,6 +237,7 @@ void play_cutscene_music(u16 seqArgs) {
 void play_shell_music(void) {
     play_music(SEQ_PLAYER_LEVEL, SEQUENCE_ARGS(4, SEQ_EVENT_POWERUP | SEQ_VARIATION), 0);
     sCurrentShellMusic = SEQUENCE_ARGS(4, SEQ_EVENT_POWERUP | SEQ_VARIATION);
+	gUnbreakMusic = FALSE;
 }
 
 void stop_shell_music(void) {
@@ -251,11 +253,13 @@ void play_cap_music(u16 seqArgs) {
         stop_background_music(sCurrentCapMusic);
     }
     sCurrentCapMusic = seqArgs;
+	gUnbreakMusic = FALSE;
 }
 
 void fadeout_cap_music(void) {
     if (sCurrentCapMusic != MUSIC_NONE) {
         fadeout_background_music(sCurrentCapMusic, 600);
+		gUnbreakMusic = TRUE;
     }
 }
 

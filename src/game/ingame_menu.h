@@ -35,7 +35,7 @@ extern s8 gDialogCourseActNum;
 extern s8 gHudFlash;
 
 extern f32 gCurrTextScale;
-extern char gTimerText[16];
+extern char gTimerText[32];
 
 struct DialogEntry
 {
@@ -167,6 +167,7 @@ void render_hud_cannon_reticle(void);
 void reset_red_coins_collected(void);
 s16 render_menus_and_dialogs(void);
 void shade_screen(void);
+void shade_screen_rect(s32 x,s32 y,s32 w,s32 h);
 
 typedef struct {
 	u8 r;
@@ -179,9 +180,9 @@ void set_text_color(u8 r,u8 g,u8 b,u8 a);
 
 s32 get_text_width(const char*);
 void set_timer_text(s32 time);
+void set_timer_text_small(s32 time);
+void set_timer_text_rough(s32 time);
 void render_text_string_at(s16 x,s16 y,const char* text);
 void render_shadow_text_string_at(s16 x,s16 y,const char* text);
-
-
 
 #endif // INGAME_MENU_H

@@ -26,6 +26,7 @@
 #include "level_commands.h"
 
 #include "game/practice.h"
+#include "game/stats.h"
 
 #define CMD_GET(type, offset) (*(type *) (CMD_PROCESS_OFFSET(offset) + (u8 *) sCurrentCmd))
 
@@ -570,11 +571,16 @@ static void level_cmd_3A(void) {
     sCurrentCmd = CMD_NEXT;
 }
 
+extern s32 gPracticeSubStatus;
+
 static void level_cmd_create_whirlpool(void) {
     struct Whirlpool *whirlpool;
     s32 index = CMD_GET(u8, 2);
     s32 beatBowser2 =
         (save_file_get_flags() & (SAVE_FLAG_HAVE_KEY_2 | SAVE_FLAG_UNLOCKED_UPSTAIRS_DOOR)) != 0;
+	
+	if (gPracticeSubStatus==1) beatBowser2 = FALSE;
+	else if (gPracticeSubStatus==2) beatBowser2 = TRUE;
 
     if (CMD_GET(u8, 3) == 0 || (CMD_GET(u8, 3) == 1 && !beatBowser2)
         || (CMD_GET(u8, 3) == 2 && beatBowser2) || (CMD_GET(u8, 3) == 3 && gCurrActNum >= 2)) {
@@ -864,10 +870,48 @@ static void (*LevelScriptJumpTable[])(void) = {
 };
 
 static void run_level_script(void){
-	gLastButtons = gPlayer1Controller->buttonDown;
+	if (gCurrRecordingReplay){
+		add_frame();
+	} else if (gCurrPlayingReplay){
+		update_replay();
+	}
+	
+	if (gCurrPlayingReplay && !gRenderPracticeMenu){
+		replay_overwrite_inputs(gPlayer1Controller);
+	}
+	
 	while (sScriptStatus == SCRIPT_RUNNING) {
         LevelScriptJumpTable[sCurrentCmd->type]();
     }
+}
+
+u8 gClosePracticeMenuNextFrame = 0;
+static u8 sOpenPracticeMenuNextFrame = 0;
+
+void check_practice_menu(void){
+	if (gClosePracticeMenuNextFrame&&!(gPlayer1Controller->buttonDown & B_BUTTON)){
+		gRenderPracticeMenu = FALSE;
+		gClosePracticeMenuNextFrame = FALSE;
+		sOpenPracticeMenuNextFrame = FALSE;
+		practice_menu_audio_enabled(TRUE);
+		// pretend there was no pause
+		gPlayer1Controller->buttonPressed = gPlayer1Controller->buttonDown & ~gLastButtons;
+	}
+
+	if (sOpenPracticeMenuNextFrame){
+		gRenderPracticeMenu = TRUE;
+		practice_menu_audio_enabled(FALSE);
+		load_all_settings();
+		if (gCurrPlayingReplay){
+			gPlayer1Controller->buttonPressed &= ~REPLAY_BUTTON_MASK;
+			gPlayer1Controller->buttonDown &= ~REPLAY_BUTTON_MASK;
+		}
+		sOpenPracticeMenuNextFrame = FALSE;
+	}
+	
+	if ((gPlayer1Controller->buttonPressed & D_JPAD) && !gRenderPracticeMenu){
+		sOpenPracticeMenuNextFrame = TRUE;
+	}
 }
 
 struct LevelCommand *level_script_execute(struct LevelCommand *cmd) {
@@ -875,23 +919,24 @@ struct LevelCommand *level_script_execute(struct LevelCommand *cmd) {
     sCurrentCmd = cmd;
 	u8 advanced = FALSE;
 	
-	practice_update();
+	check_practice_menu();
+	stats_update();
 	
-	if (gPlayer1Controller->buttonPressed & L_JPAD){
-		gFrameAdvance = !gFrameAdvance;
-	}
+	if (!gRenderPracticeMenu){
+		practice_update();
 
-	if (!gRenderPracticeMenu&&!gFrameAdvance){
-		run_level_script();
-	} else if (gFrameAdvance && !gRenderPracticeMenu){
-		if (gPlayer1Controller->buttonPressed & L_TRIG){
-			// copy last frames inputs
-			gPlayer1Controller->buttonPressed = gPlayer1Controller->buttonDown & (~gLastButtons);
-			copy_to_player_3();
-			
-			// run one update
+		if (!gFrameAdvance){
 			run_level_script();
-			advanced = TRUE;
+		} else {
+			if (gPlayer1Controller->buttonPressed & L_TRIG){
+				// copy last frames inputs
+				gPlayer1Controller->buttonPressed = gPlayer1Controller->buttonDown & (~gLastButtons);
+				copy_to_player_3();
+				
+				// run one update
+				run_level_script();
+				advanced = TRUE;
+			}
 		}
 	}
 	
@@ -907,8 +952,19 @@ struct LevelCommand *level_script_execute(struct LevelCommand *cmd) {
 	if (advanced){
 		// frame advanced this frame so update timers
 		gFrameAdvance = TRUE;
+		gLastButtons = gPlayer1Controller->buttonDown;
 		++gGlobalTimer;
 		++gSectionTimer;
+	} else if (!gRenderPracticeMenu&&!gFrameAdvance){
+		gLastButtons = gPlayer1Controller->buttonDown;
+		++gGlobalTimer;
+		++gSectionTimer;
+	}
+	
+	if (!gRenderPracticeMenu){
+		if (gPlayer1Controller->buttonPressed & L_JPAD){
+			gFrameAdvance = !gFrameAdvance;
+		}
 	}
 
     return sCurrentCmd;
