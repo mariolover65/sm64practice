@@ -17,16 +17,20 @@ static struct ControllerAPI *controller_implementations[] = {
     #if defined(CAPI_SDL2) || defined(CAPI_SDL1)
     &controller_sdl,
     #endif
-    &controller_keyboard,
+    &controller_keyboard
 };
+
+// keyboard must be last in the array
+static const u32 KEYBOARD_INDEX = sizeof(controller_implementations)/sizeof(struct ControllerAPI*)-1;
 
 s32 osContInit(UNUSED OSMesgQueue *mq, u8 *controllerBits, UNUSED OSContStatus *status) {
 	if (configAnglerOverride){
-		controller_angler.init();
-	} else {
-		for (size_t i = 0; i < sizeof(controller_implementations) / sizeof(struct ControllerAPI *); i++)
-			controller_implementations[i]->init();
+		controller_implementations[KEYBOARD_INDEX] = &controller_angler;
 	}
+	
+	for (size_t i = 0; i < sizeof(controller_implementations) / sizeof(struct ControllerAPI *); i++)
+		controller_implementations[i]->init();
+	
     *controllerBits = 1;
     return 0;
 }
@@ -34,14 +38,10 @@ s32 osContInit(UNUSED OSMesgQueue *mq, u8 *controllerBits, UNUSED OSContStatus *
 s32 osMotorStart(UNUSED void *pfs) {
     // Since rumble stops by osMotorStop, its duration is not nessecary.
     // Set it to 5 seconds and hope osMotorStop() is called in time.
-    if (configRumbleStrength)
-        controller_rumble_play(configRumbleStrength / 100.0f, 5.0f);
     return 0;
 }
 
 s32 osMotorStop(UNUSED void *pfs) {
-    if (configRumbleStrength)
-        controller_rumble_stop();
     return 0;
 }
 
@@ -60,20 +60,16 @@ void osContGetReadData(OSContPad *pad) {
     pad->ext_stick_x = 0;
     pad->ext_stick_y = 0;
     pad->errnum = 0;
-
-	if (configAnglerOverride){
-		controller_angler.read(pad);
-	} else {
-		for (size_t i = 0; i < sizeof(controller_implementations) / sizeof(struct ControllerAPI *); i++) {
-			controller_implementations[i]->read(pad);
-		}
+	for (size_t i = 0; i < sizeof(controller_implementations) / sizeof(struct ControllerAPI *); i++) {
+		controller_implementations[i]->read(pad);
 	}
 }
 
 u32 controller_get_raw_key(void) {
-	if (configAnglerOverride) return VK_INVALID;
-	
     for (size_t i = 0; i < sizeof(controller_implementations) / sizeof(struct ControllerAPI *); i++) {
+		if (!controller_implementations[i]->rawkey)
+			continue;
+		
         u32 vk = controller_implementations[i]->rawkey();
         if (vk != VK_INVALID) return vk + controller_implementations[i]->vkbase;
     }
@@ -81,29 +77,23 @@ u32 controller_get_raw_key(void) {
 }
 
 void controller_shutdown(void) {
-	if (!configAnglerOverride){
-		for (size_t i = 0; i < sizeof(controller_implementations) / sizeof(struct ControllerAPI *); i++) {
-			if (controller_implementations[i]->shutdown)
-				controller_implementations[i]->shutdown();
-		}
+	for (size_t i = 0; i < sizeof(controller_implementations) / sizeof(struct ControllerAPI *); i++) {
+		if (controller_implementations[i]->shutdown)
+			controller_implementations[i]->shutdown();
 	}
 }
 
 void controller_reconfigure(void) {
-	if (!configAnglerOverride){
-		for (size_t i = 0; i < sizeof(controller_implementations) / sizeof(struct ControllerAPI *); i++) {
-			if (controller_implementations[i]->reconfig)
-				controller_implementations[i]->reconfig();
-		}
+	for (size_t i = 0; i < sizeof(controller_implementations) / sizeof(struct ControllerAPI *); i++) {
+		if (controller_implementations[i]->reconfig)
+			controller_implementations[i]->reconfig();
 	}
 }
 
 void controller_rumble_play(float str, float time) {
-	if (!configAnglerOverride){
-		for (size_t i = 0; i < sizeof(controller_implementations) / sizeof(struct ControllerAPI *); i++) {
-			if (controller_implementations[i]->rumble_play)
-				controller_implementations[i]->rumble_play(str, time);
-		}
+	for (size_t i = 0; i < sizeof(controller_implementations) / sizeof(struct ControllerAPI *); i++) {
+		if (controller_implementations[i]->rumble_play)
+			controller_implementations[i]->rumble_play(str, time);
 	}
 }
 

@@ -41,6 +41,14 @@ void *vec3f_add(Vec3f dest, Vec3f a) {
     return &dest; //! warning: function returns address of local variable
 }
 
+/// Sub vector 'a' from 'dest'
+void *vec3f_sub(Vec3f dest, Vec3f a) {
+    dest[0] -= a[0];
+    dest[1] -= a[1];
+    dest[2] -= a[2];
+    return &dest; //! warning: function returns address of local variable
+}
+
 /// Make 'dest' the sum of vectors a and b.
 void *vec3f_sum(Vec3f dest, Vec3f a, Vec3f b) {
     dest[0] = a[0] + b[0];

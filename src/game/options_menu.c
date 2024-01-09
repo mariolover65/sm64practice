@@ -57,19 +57,6 @@ static const u8 menuStr[][32] = {
     { TEXT_EXIT_GAME },
 };
 
-static const u8 optsCameraStr[][32] = {
-    { TEXT_OPT_CAMX },
-    { TEXT_OPT_CAMY },
-    { TEXT_OPT_INVERTX },
-    { TEXT_OPT_INVERTY },
-    { TEXT_OPT_CAMC },
-    { TEXT_OPT_CAMP },
-    { TEXT_OPT_ANALOGUE },
-    { TEXT_OPT_MOUSE },
-    { TEXT_OPT_CAMD },
-    { TEXT_OPT_CAMON },
-};
-
 static const u8 optsVideoStr[][32] = {
     { TEXT_OPT_FSCREEN },
     { TEXT_OPT_TEXFILTER },
@@ -103,12 +90,15 @@ static const u8 bindStr[][32] = {
     { TEXT_BIND_C_DOWN },
     { TEXT_BIND_C_LEFT },
     { TEXT_BIND_C_RIGHT },
+	{ TEXT_BIND_D_UP },
+	{ TEXT_BIND_D_DOWN },
+	{ TEXT_BIND_D_LEFT },
+	{ TEXT_BIND_D_RIGHT },
     { TEXT_BIND_UP },
     { TEXT_BIND_DOWN },
     { TEXT_BIND_LEFT },
     { TEXT_BIND_RIGHT },
-    { TEXT_OPT_DEADZONE },
-    { TEXT_OPT_RUMBLE },
+    { TEXT_OPT_DEADZONE }
 };
 
 static const u8 *filterChoices[] = {
@@ -203,21 +193,6 @@ static void optvideo_apply(UNUSED struct Option *self, s32 arg) {
 
 /* submenu option lists */
 
-#ifdef BETTERCAMERA
-static struct Option optsCamera[] = {
-    DEF_OPT_TOGGLE( optsCameraStr[9], &configEnableCamera ),
-    DEF_OPT_TOGGLE( optsCameraStr[6], &configCameraAnalog ),
-    DEF_OPT_TOGGLE( optsCameraStr[7], &configCameraMouse ),
-    DEF_OPT_TOGGLE( optsCameraStr[2], &configCameraInvertX ),
-    DEF_OPT_TOGGLE( optsCameraStr[3], &configCameraInvertY ),
-    DEF_OPT_SCROLL( optsCameraStr[0], &configCameraXSens, 1, 100, 1 ),
-    DEF_OPT_SCROLL( optsCameraStr[1], &configCameraYSens, 1, 100, 1 ),
-    DEF_OPT_SCROLL( optsCameraStr[4], &configCameraAggr, 0, 100, 1 ),
-    DEF_OPT_SCROLL( optsCameraStr[5], &configCameraPan, 0, 100, 1 ),
-    DEF_OPT_SCROLL( optsCameraStr[8], &configCameraDegrade, 0, 100, 1 ),
-};
-#endif
-
 static struct Option optsControls[] = {
     DEF_OPT_BIND( bindStr[ 2], configKeyA ),
     DEF_OPT_BIND( bindStr[ 3], configKeyB ),
@@ -229,21 +204,23 @@ static struct Option optsControls[] = {
     DEF_OPT_BIND( bindStr[ 9], configKeyCDown ),
     DEF_OPT_BIND( bindStr[10], configKeyCLeft ),
     DEF_OPT_BIND( bindStr[11], configKeyCRight ),
-    DEF_OPT_BIND( bindStr[12], configKeyStickUp ),
-    DEF_OPT_BIND( bindStr[13], configKeyStickDown ),
-    DEF_OPT_BIND( bindStr[14], configKeyStickLeft ),
-    DEF_OPT_BIND( bindStr[15], configKeyStickRight ),
+	DEF_OPT_BIND( bindStr[12], configKeyDUp ),
+	DEF_OPT_BIND( bindStr[13], configKeyDDown ),
+	DEF_OPT_BIND( bindStr[14], configKeyDLeft ),
+	DEF_OPT_BIND( bindStr[15], configKeyDRight ),
+    DEF_OPT_BIND( bindStr[16], configKeyStickUp ),
+    DEF_OPT_BIND( bindStr[17], configKeyStickDown ),
+    DEF_OPT_BIND( bindStr[18], configKeyStickLeft ),
+    DEF_OPT_BIND( bindStr[19], configKeyStickRight ),
     // max deadzone is 31000; this is less than the max range of ~32768, but this
     // way, the player can't accidentally lock themselves out of using the stick
-    DEF_OPT_SCROLL( bindStr[16], &configStickDeadzone, 0, 100, 1 ),
-    DEF_OPT_SCROLL( bindStr[17], &configRumbleStrength, 0, 100, 1)
+    DEF_OPT_SCROLL( bindStr[20], &configStickDeadzone, 0, 100, 1 )
 };
 
 static struct Option optsVideo[] = {
     DEF_OPT_TOGGLE( optsVideoStr[0], &configWindow.fullscreen ),
     DEF_OPT_TOGGLE( optsVideoStr[5], &configWindow.vsync ),
     DEF_OPT_CHOICE( optsVideoStr[1], &configFiltering, filterChoices ),
-    DEF_OPT_TOGGLE( optsVideoStr[7], &configHUD ),
     DEF_OPT_BUTTON( optsVideoStr[4], optvideo_reset_window ),
     DEF_OPT_BUTTON( optsVideoStr[9], optvideo_apply ),
 };
@@ -257,9 +234,6 @@ static struct Option optsAudio[] = {
 
 /* submenu definitions */
 
-#ifdef BETTERCAMERA
-static struct SubMenu menuCamera   = DEF_SUBMENU( menuStr[1], optsCamera );
-#endif
 static struct SubMenu menuControls = DEF_SUBMENU( menuStr[2], optsControls );
 static struct SubMenu menuVideo    = DEF_SUBMENU( menuStr[3], optsVideo );
 static struct SubMenu menuAudio    = DEF_SUBMENU( menuStr[4], optsAudio );
@@ -267,9 +241,6 @@ static struct SubMenu menuAudio    = DEF_SUBMENU( menuStr[4], optsAudio );
 /* main options menu definition */
 
 static struct Option optsMain[] = {
-#ifdef BETTERCAMERA
-    DEF_OPT_SUBMENU( menuStr[1], &menuCamera ),
-#endif
     DEF_OPT_SUBMENU( menuStr[2], &menuControls ),
     DEF_OPT_SUBMENU( menuStr[3], &menuVideo ),
     DEF_OPT_SUBMENU( menuStr[4], &menuAudio ),
@@ -472,9 +443,6 @@ void optmenu_toggle(void) {
         play_sound(SOUND_MENU_MARIO_CASTLE_WARP2, gDefaultSoundArgs);
         #endif
         optmenu_open = 0;
-        #ifdef BETTERCAMERA
-        newcam_init_settings(); // load bettercam settings from config vars
-        #endif
         controller_reconfigure(); // rebind using new config values
         configfile_save(configfile_name());
     }

@@ -335,7 +335,7 @@ static void level_cmd_free_level_pool(void) {
 
     alloc_only_pool_resize(sLevelPool, sLevelPool->usedSpace);
     sLevelPool = NULL;
-
+	
     for (i = 0; i < 8; i++) {
         if (gAreaData[i].terrainData != NULL) {
             alloc_surface_pools();
@@ -648,7 +648,7 @@ static void level_cmd_load_area(void) {
     s16 areaIndex = CMD_GET(u8, 2);
     UNUSED void *unused = (u8 *) sCurrentCmd + 4;
 
-    func_80320890();
+    stop_sounds_in_continuous_banks();
     load_area(areaIndex);
 
     sCurrentCmd = CMD_NEXT;
@@ -869,12 +869,16 @@ static void (*LevelScriptJumpTable[])(void) = {
     /*3E*/ level_cmd_cleardemoptr,
 };
 
+u8 gShouldSetMarioThrow = FALSE;
+
 static void run_level_script(void){
 	if (gCurrRecordingReplay){
 		add_frame();
 	} else if (gCurrPlayingReplay){
 		update_replay();
 	}
+	
+	gShouldSetMarioThrow = FALSE;
 	
 	if (gCurrPlayingReplay && !gRenderPracticeMenu){
 		replay_overwrite_inputs(gPlayer1Controller);
@@ -886,19 +890,19 @@ static void run_level_script(void){
 }
 
 u8 gClosePracticeMenuNextFrame = 0;
-static u8 sOpenPracticeMenuNextFrame = 0;
+u8 gOpenPracticeMenuNextFrame = 0;
 
 void check_practice_menu(void){
 	if (gClosePracticeMenuNextFrame&&!(gPlayer1Controller->buttonDown & B_BUTTON)){
 		gRenderPracticeMenu = FALSE;
 		gClosePracticeMenuNextFrame = FALSE;
-		sOpenPracticeMenuNextFrame = FALSE;
+		gOpenPracticeMenuNextFrame = FALSE;
 		practice_menu_audio_enabled(TRUE);
 		// pretend there was no pause
 		gPlayer1Controller->buttonPressed = gPlayer1Controller->buttonDown & ~gLastButtons;
 	}
 
-	if (sOpenPracticeMenuNextFrame){
+	if (gOpenPracticeMenuNextFrame){
 		gRenderPracticeMenu = TRUE;
 		practice_menu_audio_enabled(FALSE);
 		load_all_settings();
@@ -906,13 +910,20 @@ void check_practice_menu(void){
 			gPlayer1Controller->buttonPressed &= ~REPLAY_BUTTON_MASK;
 			gPlayer1Controller->buttonDown &= ~REPLAY_BUTTON_MASK;
 		}
-		sOpenPracticeMenuNextFrame = FALSE;
+		if (gCurrRecordingReplay){
+			gCurrRecordingReplay->flags |= REPLAY_FLAG_OPENED_PRACTICE_MENU;
+		}
+		gOpenPracticeMenuNextFrame = FALSE;
 	}
 	
-	if ((gPlayer1Controller->buttonPressed & D_JPAD) && !gRenderPracticeMenu){
-		sOpenPracticeMenuNextFrame = TRUE;
-	}
+	/*if ((gPlayer1Controller->buttonPressed & D_JPAD) && 
+		!(gPlayer1Controller->buttonDown & L_TRIG) && !gRenderPracticeMenu){
+		gOpenPracticeMenuNextFrame = TRUE;
+	}*/
 }
+
+extern u8 gIntroSkipSetValsPrimed;
+u8 gInStarSelect = FALSE;
 
 struct LevelCommand *level_script_execute(struct LevelCommand *cmd) {
     sScriptStatus = SCRIPT_RUNNING;
@@ -921,21 +932,20 @@ struct LevelCommand *level_script_execute(struct LevelCommand *cmd) {
 	
 	check_practice_menu();
 	stats_update();
-	
 	if (!gRenderPracticeMenu){
 		practice_update();
-
 		if (!gFrameAdvance){
 			run_level_script();
 		} else {
-			if (gPlayer1Controller->buttonPressed & L_TRIG){
-				// copy last frames inputs
+			if (gFrameAdvancedThisFrame){
+				// copy last frame's inputs
 				gPlayer1Controller->buttonPressed = gPlayer1Controller->buttonDown & (~gLastButtons);
 				copy_to_player_3();
 				
 				// run one update
 				run_level_script();
 				advanced = TRUE;
+				gFrameAdvancedThisFrame = FALSE;
 			}
 		}
 	}
@@ -945,25 +955,26 @@ struct LevelCommand *level_script_execute(struct LevelCommand *cmd) {
 	}
     profiler_log_thread5_time(LEVEL_SCRIPT_EXECUTE);
     init_render_image();
+	
+	practice_fix_mario_rotation();
+	
     render_game();
     end_master_display_list();
     alloc_display_list(0);
 	
-	if (advanced){
-		// frame advanced this frame so update timers
-		gFrameAdvance = TRUE;
+
+	if ((!gRenderPracticeMenu&&!gFrameAdvance)||advanced){
+		if (advanced)
+			gFrameAdvance = TRUE;
+		
 		gLastButtons = gPlayer1Controller->buttonDown;
 		++gGlobalTimer;
 		++gSectionTimer;
-	} else if (!gRenderPracticeMenu&&!gFrameAdvance){
-		gLastButtons = gPlayer1Controller->buttonDown;
-		++gGlobalTimer;
-		++gSectionTimer;
-	}
-	
-	if (!gRenderPracticeMenu){
-		if (gPlayer1Controller->buttonPressed & L_JPAD){
-			gFrameAdvance = !gFrameAdvance;
+		
+		// if about to set init values for intro skip
+		if (gIntroSkipSetValsPrimed){
+			if (--gIntroSkipSetValsPrimed==0)
+				practice_intro_skip_start();
 		}
 	}
 

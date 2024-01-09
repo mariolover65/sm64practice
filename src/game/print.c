@@ -349,12 +349,67 @@ s8 char_to_glyph_index(char c) {
     return GLYPH_SPACE;
 }
 
+void render_colored_sprite(const u8* sprite,s32 x,s32 y,u8 r,u8 g,u8 b,u8 a){
+	gDPPipeSync(gDisplayListHead++);
+	gDPSetCycleType(gDisplayListHead++,G_CYC_1CYCLE);
+	gDPSetAlphaCompare(gDisplayListHead++,G_AC_THRESHOLD);
+	gDPSetCombineMode(gDisplayListHead++,G_CC_FADEA, G_CC_FADEA);
+	gDPSetEnvColor(gDisplayListHead++, r, g, b, a);
+	gDPSetTextureFilter(gDisplayListHead++, G_TF_POINT);
+	gDPSetRenderMode(gDisplayListHead++,G_RM_AA_XLU_SURF, G_RM_AA_XLU_SURF2);
+	gDPSetTextureImage(gDisplayListHead++, G_IM_FMT_RGBA, G_IM_SIZ_16b, 1, sprite);
+	gSPDisplayList(gDisplayListHead++, dl_hud_img_load_tex_block);
+	
+	gSPTextureRectangle(gDisplayListHead++, x*4, y*4, (x + 16)*4,
+						(y + 16)*4, G_TX_RENDERTILE, 0, 0, 1 << 10, 1 << 10);
+}
+
+extern const u8 cannon_base_seg8_texture_080049B8[];
+extern const u8 cannon_lid_seg8_texture_08004058[];
+
+
+
+void render_big_colored_sprite(const u8* sprite,s32 x,s32 y,u8 r,u8 g,u8 b,u8 a){
+	gDPPipeSync(gDisplayListHead++);
+	gDPSetCycleType(gDisplayListHead++,G_CYC_1CYCLE);
+	gDPSetAlphaCompare(gDisplayListHead++,G_AC_THRESHOLD);
+	gDPSetCombineMode(gDisplayListHead++,G_CC_FADEA, G_CC_FADEA);
+	gDPSetEnvColor(gDisplayListHead++, r, g, b, a);
+	gDPSetTextureFilter(gDisplayListHead++, G_TF_POINT);
+	gDPSetRenderMode(gDisplayListHead++,G_RM_XLU_SURF, G_RM_XLU_SURF2);
+	
+	gDPSetTile(gDisplayListHead++, G_IM_FMT_RGBA, G_IM_SIZ_16b, 0, 0, 
+				G_TX_LOADTILE, 0, G_TX_WRAP | G_TX_NOMIRROR, G_TX_NOMASK, 
+				G_TX_NOLOD, G_TX_WRAP | G_TX_NOMIRROR, G_TX_NOMASK, G_TX_NOLOD);
+    gSPTexture(gDisplayListHead++, 0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_ON);
+    gDPTileSync(gDisplayListHead++);
+    gDPSetTile(gDisplayListHead++, G_IM_FMT_RGBA, G_IM_SIZ_16b, 8, 0, G_TX_RENDERTILE, 
+				0, G_TX_CLAMP, 5, G_TX_NOLOD, G_TX_CLAMP, 5, G_TX_NOLOD);
+    gDPSetTileSize(gDisplayListHead++, 0, 0, 0, (32 - 1) << G_TEXTURE_IMAGE_FRAC, (32 - 1) << G_TEXTURE_IMAGE_FRAC);
+	gDPSetTextureImage(gDisplayListHead++, G_IM_FMT_RGBA, G_IM_SIZ_16b, 1, sprite);
+    gDPLoadSync(gDisplayListHead++);
+    gDPLoadBlock(gDisplayListHead++, G_TX_LOADTILE, 0, 0, 32 * 32 - 1, CALC_DXT(32, G_IM_SIZ_16b_BYTES));
+	
+	gSPTextureRectangle(gDisplayListHead++, x*4, y*4, (x + 16)*4,
+						(y + 16)*4, G_TX_RENDERTILE, 0, 0, 2 << 10, 2 << 10);
+}
+
+void render_cannon_sprite(s32 x,s32 y,u8 open){
+	const u8* sprite;
+	if (open)
+		sprite = cannon_base_seg8_texture_080049B8;
+	else
+		sprite = cannon_lid_seg8_texture_08004058;
+	
+	render_big_colored_sprite(sprite,x,y,255,255,255,255);
+}
+
 /**
  * Adds an individual glyph to be rendered.
  */
 void add_glyph_texture(s8 glyphIndex) {
     const u8 *const *glyphs = segmented_to_virtual(main_hud_lut);
-
+	
     gDPPipeSync(gDisplayListHead++);
     gDPSetTextureImage(gDisplayListHead++, G_IM_FMT_RGBA, G_IM_SIZ_16b, 1, glyphs[glyphIndex]);
     gSPDisplayList(gDisplayListHead++, dl_hud_img_load_tex_block);

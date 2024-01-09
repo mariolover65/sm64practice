@@ -52,9 +52,7 @@ void *gMarioAnimMemPool;
 void *gDemoInputsMemPool;
 struct MarioAnimation gMarioAnimation;
 struct MarioAnimation gDemo;
-UNUSED u8 filler80339D30[0x90];
 
-int unused8032C690 = 0;
 u32 gGlobalTimer = 0;
 
 static u16 sCurrFBNum = 0;
@@ -299,18 +297,20 @@ void display_and_vsync(void) {
         D_8032C6A0();
         D_8032C6A0 = NULL;
     }
-    send_display_list(&gGfxPool->spTask);
-    profiler_log_thread5_time(AFTER_DISPLAY_LISTS);
-    osRecvMesg(&gGameVblankQueue, &D_80339BEC, OS_MESG_BLOCK);
-    osViSwapBuffer((void *) PHYSICAL_TO_VIRTUAL(gPhysicalFrameBuffers[sCurrFBNum]));
-    profiler_log_thread5_time(THREAD5_END);
-    osRecvMesg(&gGameVblankQueue, &D_80339BEC, OS_MESG_BLOCK);
-    if (++sCurrFBNum == 3) {
-        sCurrFBNum = 0;
-    }
-    if (++frameBufferIndex == 3) {
-        frameBufferIndex = 0;
-    }
+	if (!gDisableRendering){
+		send_display_list(&gGfxPool->spTask);
+		profiler_log_thread5_time(AFTER_DISPLAY_LISTS);
+		osRecvMesg(&gGameVblankQueue, &D_80339BEC, OS_MESG_BLOCK);
+		osViSwapBuffer((void *) PHYSICAL_TO_VIRTUAL(gPhysicalFrameBuffers[sCurrFBNum]));
+		profiler_log_thread5_time(THREAD5_END);
+		osRecvMesg(&gGameVblankQueue, &D_80339BEC, OS_MESG_BLOCK);
+		if (++sCurrFBNum == 3) {
+			sCurrFBNum = 0;
+		}
+		if (++frameBufferIndex == 3) {
+			frameBufferIndex = 0;
+		}
+	}
 }
 
 // this function records distinct inputs over a 255-frame interval to RAM locations and was likely
@@ -495,6 +495,11 @@ void read_controller_inputs(void) {
             controller->buttonPressed = controller->controllerData->button
                                         & (controller->controllerData->button ^ controller->buttonDown);
             controller->buttonDown = controller->controllerData->button;
+			if (configDisableA && !gRenderPracticeMenu){
+				controller->buttonPressed &= ~A_BUTTON;
+				controller->buttonDown &= ~A_BUTTON;
+			}
+			
             adjust_analog_stick(controller);
         } else {
             // otherwise, if the controllerData is NULL, 0 out all of the inputs.
@@ -510,6 +515,7 @@ void read_controller_inputs(void) {
         }
     }
 	
+	// inactivity timer checking
 	s8 newRawStickX = gPlayer1Controller->rawStickX;
 	s8 newRawStickY = gPlayer1Controller->rawStickY;
 	u16 newButtons = gPlayer1Controller->buttonDown;
@@ -518,12 +524,16 @@ void read_controller_inputs(void) {
 		newRawStickX = 0;
 		newRawStickY = 0;
 		newButtons &= ~REPLAY_BUTTON_MASK;
+	} else if (gPlayer1Controller->buttonPressed & A_BUTTON){
+		++gAPressCounter;
 	}
 	
-	if (oldRawStickX!=newRawStickX||
-		oldRawStickY!=newRawStickY||
-		oldButtons!=newButtons){
-		gInactivityTimer = 0;
+	if (!gCurrDemoInput){
+		if (oldRawStickX!=newRawStickX||
+			oldRawStickY!=newRawStickY||
+			oldButtons!=newButtons){
+			gInactivityTimer = 0;
+		}
 	}
 
     // For some reason, player 1's inputs are copied to player 3's port. This
@@ -637,8 +647,7 @@ void game_loop_one_iteration(void) {
     read_controller_inputs();
     levelCommandAddr = level_script_execute(levelCommandAddr);
 	
-	if (!gDisableRendering)
-		display_and_vsync();
+	display_and_vsync();
 
     // when debug info is enabled, print the "BUF %d" information.
     if (gShowDebugText) {

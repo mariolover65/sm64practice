@@ -36,7 +36,6 @@
 
 #include "src/pc/controller/controller_keyboard.h"
 
-// TODO: figure out if this shit even works
 #ifdef VERSION_EU
 # define FRAMERATE 25
 #else
@@ -310,6 +309,14 @@ static bool gfx_sdl_start_frame(void) {
     return true;
 }
 
+static inline void spin_sleep(double t){
+	const double start = SDL_GetPerformanceCounter();
+	while (1){
+		if (SDL_GetPerformanceCounter()-start > t)
+			break;
+	}
+}
+
 static inline void sync_framerate_with_timer(void) {
     // calculate how long it took for the frame to render
     const double now = SDL_GetPerformanceCounter();
@@ -320,6 +327,7 @@ static inline void sync_framerate_with_timer(void) {
         const double remain = frame_rate - frame_length;
         // Sleep remaining time away
         sys_sleep(remain / perf_freq * 1000000.0);
+		//spin_sleep(remain);
         // Assume we slept the required amount of time to keep the timer stable
         frame_time = now + remain;
     } else {

@@ -30,6 +30,7 @@
 #include "controller/controller_api.h"
 #include "controller/controller_keyboard.h"
 #include "controller/controller_angler.h"
+#include "controller/controller_recorded_tas.h"
 #include "fs/fs.h"
 
 #include "game/game_init.h"
@@ -176,7 +177,10 @@ static void on_anim_frame(double time) {
         request_anim_frame(on_anim_frame);
 }
 #endif
-void soft_reset(void);
+//void soft_reset(void);
+
+extern u16 gRandomSeed16;
+extern struct SaveBuffer gSaveBuffer;
 
 void main_func(void) {
     const char *gamedir = gCLIOpts.GameDir[0] ? gCLIOpts.GameDir : FS_BASEDIR;
@@ -186,6 +190,7 @@ void main_func(void) {
 	stats_init();
 	
     configfile_load(configfile_name());
+	//configAnglerOverride = false;
 	stats_load(PRACTICE_STATS_PATH);
 
     if (gCLIOpts.FullScreen == 1)
@@ -249,7 +254,32 @@ void main_func(void) {
 	
 	printf("Object size: %lld\n",sizeof(struct Object));
 	printf("SaveState size: %lld\n",sizeof(SaveState));
+	printf("Save size: %lld\n",2*sizeof(struct SaveFile));
+	printf("practice type: %p\n",&configPracticeType);
+	printf("globaltimer: %p\n",&gGlobalTimer);
+	printf("sectiontimer: %p\n",&gSectionTimer);
+	printf("controllerbits: %p\n",&gControllerBits);
+	printf("controller pad: %p\n",&gControllerPads[0]);
+	printf("anim: %p\n",&gMarioState->action);
+	printf("anim timer: %p\n",&gMarioState->actionTimer);
+	printf("level: %p\n",&gCurrLevelNum);
+	printf("nonstop: %p\n",&configNonstop);
+	printf("introskip: %p\n",&configSkipIntro);
+	printf("saveflags: %p\n",&gSaveBuffer.files[0]->flags);
+	printf("stars: %p\n",&gSaveBuffer.files[0]->courseStars);
+	printf("star count: %p\n",&gMarioState->numStars);
+	printf("file num: %p\n",&gCurrSaveFileNum);
+	printf("mario obj: %p\n",&gMarioObject);
+	printf("anim timer offset: %lld\n",(u8*)&gMarioObject->header.gfx.unk38.animTimer-(u8*)gMarioObject);
+	printf("rng: %p\n",&gRandomSeed16);
+	printf("coin count: %p\n",&gMarioState->numCoins);
 
+/*
+
+
+#define EX_FILE_SELECT_TIMER_OFFSET 0xf9e3c6
+#define EX_TRANSITION_OFFSET 0xf957b4
+*/
     audio_init();
     sound_init();
 
@@ -277,10 +307,10 @@ void main_func(void) {
     request_anim_frame(on_anim_frame);
 #else
     while (true) {
-        if (gResetTrigger){
+        /*if (gResetTrigger){
             gResetTrigger = 0;
             soft_reset();
-        }
+        }*/
 		if (gDisableRendering)
 			game_loop_one_iteration();
 		else

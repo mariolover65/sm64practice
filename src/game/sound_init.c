@@ -87,7 +87,7 @@ void lower_background_noise(s32 a) // Soften volume
             set_sound_disabled(TRUE);
             break;
         case SOUND_FLAG_QUIET:
-            func_8031FFB4(SEQ_PLAYER_LEVEL, 60, 40); // soften music
+            seq_player_lower_volume(SEQ_PLAYER_LEVEL, 60, 40); // soften music
             break;
     }
     sSoundFlags |= a;
@@ -210,6 +210,7 @@ void set_background_music(u16 a, u16 seqArgs, s16 fadeTimer) {
         if (!(gShouldNotPlayCastleMusic && seqArgs == SEQ_LEVEL_INSIDE_CASTLE) && !configDisableMusic) {
             play_music(SEQ_PLAYER_LEVEL, seqArgs, fadeTimer);
             sCurrentMusic = seqArgs;
+			gUnbreakMusic = FALSE;
         }
     }
 }

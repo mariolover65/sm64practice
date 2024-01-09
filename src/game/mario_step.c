@@ -9,7 +9,9 @@
 #include "interaction.h"
 #include "mario_step.h"
 
+#include "pc/configfile.h"
 #include "practice.h"
+#include "stats.h"
 
 static s16 sMovingSandSpeeds[] = { 12, 8, 4, 0 };
 
@@ -241,6 +243,11 @@ s32 stationary_ground_step(struct MarioState *m) {
     u32 stepResult = GROUND_STEP_NONE;
 
     mario_set_forward_vel(m, 0.0f);
+	
+	// for distanceMoved
+	Vec3f oldPos;
+	Vec3f diff;
+	vec3f_copy(oldPos,m->pos);
 
     takeStep = mario_update_moving_sand(m);
     takeStep |= mario_update_windy_ground(m);
@@ -253,6 +260,10 @@ s32 stationary_ground_step(struct MarioState *m) {
         vec3f_copy(marioObj->header.gfx.pos, m->pos);
         vec3s_set(marioObj->header.gfx.angle, 0, m->faceAngle[1], 0);
     }
+	
+	// calculate ground distanceMoved for stats
+	vec3f_dif(diff,m->pos,oldPos);
+	stats_add_dist(vec3f_length(diff));
 
     return stepResult;
 }
@@ -325,6 +336,11 @@ s32 perform_ground_step(struct MarioState *m) {
     s32 i;
     u32 stepResult;
     Vec3f intendedPos;
+	
+	// for distanceMoved
+	Vec3f oldPos;
+	Vec3f diff;
+	vec3f_copy(oldPos,m->pos);
 
     for (i = 0; i < 4; i++) {
         intendedPos[0] = m->pos[0] + m->floor->normal.y * (m->vel[0] / 4.0f);
@@ -336,6 +352,10 @@ s32 perform_ground_step(struct MarioState *m) {
             break;
         }
     }
+	
+	// calculate ground distanceMoved for stats
+	vec3f_dif(diff,m->pos,oldPos);
+	stats_add_dist(vec3f_length(diff));
 
     m->terrainSoundAddend = mario_get_terrain_sound_addend(m);
     vec3f_copy(m->marioObj->header.gfx.pos, m->pos);
@@ -444,8 +464,12 @@ s32 perform_air_quarter_step(struct MarioState *m, Vec3f intendedPos, u32 stepAr
         m->pos[1] = floorHeight;
         return AIR_STEP_LANDED;
     }
-
-    if (nextPos[1] + 160.0f > ceilHeight) {
+	
+	f32 ceilCap = 20000.0f;
+	if (ceil!=NULL&&m->action!=ACT_SPAWN_SPIN_AIRBORNE&&(m->action!=ACT_LONG_JUMP||m->forwardVel>=0.0)){
+		ceilCap = ceil->upperY;
+	}
+    if (nextPos[1] + 160.0f > ceilHeight && (!configNoInvisibleWalls || nextPos[1] < ceilCap)) {
         if (m->vel[1] >= 0.0f) {
             m->vel[1] = 0.0f;
 
@@ -618,6 +642,11 @@ s32 perform_air_step(struct MarioState *m, u32 stepArg) {
 
     m->wall = NULL;
 
+	// for distanceMoved
+	Vec3f oldPos;
+	Vec3f diff;
+	vec3f_copy(oldPos,m->pos);
+	
     for (i = 0; i < 4; i++) {
         intendedPos[0] = m->pos[0] + m->vel[0] / 4.0f;
         intendedPos[1] = m->pos[1] + m->vel[1] / 4.0f;
@@ -639,6 +668,10 @@ s32 perform_air_step(struct MarioState *m, u32 stepArg) {
             break;
         }
     }
+	
+	// calculate ground distanceMoved for stats
+	vec3f_dif(diff,m->pos,oldPos);
+	stats_add_dist(vec3f_length(diff));
 
     if (m->vel[1] >= 0.0f) {
         m->peakHeight = m->pos[1];

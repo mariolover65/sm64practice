@@ -33,7 +33,6 @@
 #include "save_file.h"
 #include "sound_init.h"
 #include "thread6.h"
-#include "pc/configfile.h"
 #ifdef BETTERCAMERA
 #include "bettercamera.h"
 #endif
@@ -277,7 +276,7 @@ void play_mario_jump_sound(struct MarioState *m) {
  */
 void adjust_sound_for_speed(struct MarioState *m) {
     s32 absForwardVel = (m->forwardVel > 0.0f) ? m->forwardVel : -m->forwardVel;
-    func_80320A4C(1, (absForwardVel > 100) ? 100 : absForwardVel);
+    set_sound_moving_speed(1, (absForwardVel > 100) ? 100 : absForwardVel);
 }
 
 /**

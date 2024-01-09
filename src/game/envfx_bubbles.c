@@ -239,7 +239,7 @@ void envfx_update_whirlpool(void) {
             (gEnvFxBuffer + i)->bubbleY =
                 gEnvFxBubbleConfig[ENVFX_STATE_SRC_Y] + (random_float() * 100.0f - 50.0f);
             (gEnvFxBuffer + i)->yPos = (i + gEnvFxBuffer)->bubbleY;
-            (gEnvFxBuffer + i)->unusedBubbleVar = 0;
+            //(gEnvFxBuffer + i)->unusedBubbleVar = 0;
             (gEnvFxBuffer + i)->isAlive = 1;
 
             envfx_rotate_around_whirlpool(&(gEnvFxBuffer + i)->xPos, &(gEnvFxBuffer + i)->yPos,

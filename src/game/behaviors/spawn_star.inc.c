@@ -18,7 +18,7 @@ void bhv_collect_star_init(void) {
 
     starId = (o->oBehParams >> 24) & 0xFF;
     currentLevelStarFlags = save_file_get_star_flags(gCurrSaveFileNum - 1, gCurrCourseNum - 1);
-    if (currentLevelStarFlags & (1 << starId)) {
+    if (!configYellowStars && (currentLevelStarFlags & (1 << starId))) {
         o->header.gfx.sharedChild = gLoadedGraphNodes[MODEL_TRANSPARENT_STAR];
     } else {
         o->header.gfx.sharedChild = gLoadedGraphNodes[MODEL_STAR];

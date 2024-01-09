@@ -1,5 +1,7 @@
 #include <PR/ultratypes.h>
 
+#include "mario_actions_submerged.h"
+
 #include "sm64.h"
 #include "level_update.h"
 #include "memory.h"
@@ -17,12 +19,19 @@
 #include "level_table.h"
 #include "thread6.h"
 
+#include "stats.h"
+
 #define MIN_SWIM_STRENGTH 160
 #define MIN_SWIM_SPEED 16.0f
 
 static s16 sWasAtSurface = FALSE;
-static s16 sSwimStrength = MIN_SWIM_STRENGTH;
+s16 sSwimStrength = MIN_SWIM_STRENGTH;
 static s16 sWaterCurrentSpeeds[] = { 28, 12, 8, 4 };
+
+s32 gSwimPressFrame = 0;
+s32 gSwimInfo = SWIM_PRACTICE_NONE;
+
+static u8 sHasPressedAThisSwim = FALSE;
 
 static s16 D_80339FD0;
 static s16 D_80339FD2;
@@ -170,6 +179,11 @@ static u32 perform_water_step(struct MarioState *m) {
     Vec3f nextPos;
     Vec3f step;
     struct Object *marioObj = m->marioObj;
+	
+	// for distanceMoved
+	Vec3f oldPos;
+	Vec3f diff;
+	vec3f_copy(oldPos,m->pos);
 
     vec3f_copy(step, m->vel);
 
@@ -187,6 +201,10 @@ static u32 perform_water_step(struct MarioState *m) {
     }
 
     stepResult = perform_water_full_step(m, nextPos);
+	
+	// calculate ground distanceMoved for stats
+	vec3f_dif(diff,m->pos,oldPos);
+	stats_add_dist(vec3f_length(diff));
 
     vec3f_copy(marioObj->header.gfx.pos, m->pos);
     vec3s_set(marioObj->header.gfx.angle, -m->faceAngle[0], m->faceAngle[1], m->faceAngle[2]);
@@ -509,7 +527,10 @@ static s32 check_water_jump(struct MarioState *m) {
 static s32 act_breaststroke(struct MarioState *m) {
     if (m->actionArg == 0) {
         sSwimStrength = MIN_SWIM_STRENGTH;
+		gSwimInfo = SWIM_PRACTICE_NONE;
     }
+	
+	sHasPressedAThisSwim = FALSE;
 
     if (m->flags & MARIO_METAL_CAP) {
         return set_mario_action(m, ACT_METAL_WATER_FALLING, 1);
@@ -518,6 +539,12 @@ static s32 act_breaststroke(struct MarioState *m) {
     if (m->input & INPUT_B_PRESSED) {
         return set_mario_action(m, ACT_WATER_PUNCH, 0);
     }
+	
+	// swim practice
+	if (m->input & INPUT_A_PRESSED && m->actionTimer!=0){
+		gSwimInfo = SWIM_PRACTICE_TOO_EARLY;
+		gSwimPressFrame = m->actionTimer-14;
+	}
 
     if (++m->actionTimer == 14) {
         return set_mario_action(m, ACT_FLUTTER_KICK, 0);
@@ -580,13 +607,25 @@ static s32 act_swimming_end(struct MarioState *m) {
     if (check_water_jump(m)) {
         return TRUE;
     }
-
+	
+	// swim practice
+	if (m->input & INPUT_A_PRESSED){
+		gSwimPressFrame = m->actionTimer-1;
+		gSwimInfo = SWIM_PRACTICE_GOOD;
+		sHasPressedAThisSwim = TRUE;
+	}
+	
     if ((m->input & INPUT_A_DOWN) && m->actionTimer >= 7) {
         if (m->actionTimer == 7 && sSwimStrength < 280) {
             sSwimStrength += 10;
-        }
+        } else if (m->actionTimer > 7){
+			gSwimInfo = SWIM_PRACTICE_TOO_LATE;
+			gSwimPressFrame = m->actionTimer-1;
+		}
         return set_mario_action(m, ACT_BREASTSTROKE, 1);
-    }
+    } else if (m->actionTimer >= 7 && sHasPressedAThisSwim){
+		gSwimInfo = SWIM_PRACTICE_HELD_TOO_SHORT;
+	}
 
     if (m->actionTimer >= 7) {
         sSwimStrength = MIN_SWIM_STRENGTH;
@@ -609,6 +648,8 @@ static s32 act_flutter_kick(struct MarioState *m) {
     if (m->input & INPUT_B_PRESSED) {
         return set_mario_action(m, ACT_WATER_PUNCH, 0);
     }
+	
+	sHasPressedAThisSwim = FALSE;
 
     if (!(m->input & INPUT_A_DOWN)) {
         if (m->actionTimer == 0 && sSwimStrength < 280) {
@@ -617,6 +658,9 @@ static s32 act_flutter_kick(struct MarioState *m) {
         return set_mario_action(m, ACT_SWIMMING_END, 0);
     }
 
+	if (gSwimInfo!=SWIM_PRACTICE_TOO_EARLY)
+		gSwimInfo = SWIM_PRACTICE_HELD_TOO_LONG;
+	
     m->forwardVel = approach_f32(m->forwardVel, 12.0f, 0.1f, 0.15f);
     m->actionTimer = 1;
     sSwimStrength = MIN_SWIM_STRENGTH;

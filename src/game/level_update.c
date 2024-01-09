@@ -38,12 +38,6 @@
 #include "save_state.h"
 #include "practice.h"
 
-#define PLAY_MODE_NORMAL 0
-#define PLAY_MODE_PAUSED 2
-#define PLAY_MODE_CHANGE_AREA 3
-#define PLAY_MODE_CHANGE_LEVEL 4
-#define PLAY_MODE_FRAME_ADVANCE 5
-
 #define WARP_NODE_F0 0xF0
 #define WARP_NODE_DEATH 0xF1
 #define WARP_NODE_F2 0xF2
@@ -177,45 +171,6 @@ s8 sWarpCheckpointIsActive = 0;
 u8 unused3[4];
 u8 unused4[2];
 
-extern s16 gMenuMode;
-extern u8 sTransitionColorFadeCount[4];
-extern u16 sTransitionTextureFadeCount[2];
-extern s16 gWarpTransDelay;
-
-extern u16 gRandomSeed16;
-extern u16 gRandomCalls;
-
-void practice_warp(void);
-
-void soft_reset(void){
-	if (gCurrLevelNum==1)
-		return;
-	
-	gWarpTransition.isActive = FALSE;
-	gWarpTransition.time = 0;
-	disable_warp_checkpoint();
-	sCurrPlayMode = PLAY_MODE_CHANGE_LEVEL;
-	gPracticeDest.type = WARP_TYPE_CHANGE_LEVEL;
-	gPracticeDest.levelNum = 1;
-	gPracticeDest.areaIdx = 1;
-	gPracticeDest.nodeId = 0;
-	practice_warp();
-	gRandomSeed16 = 0;
-	gRandomCalls = 0;
-	gGlobalTimer = 1;
-	
-	/*sWarpDest.type = WARP_TYPE_CHANGE_LEVEL;
-	sWarpDest.levelNum = 1;
-	sWarpDest.areaIdx = 1;
-	reset_dialog_render_state();
-	gMenuMode = -1;
-	gGlobalTimer = 1;
-	gHudFlash = 0;
-	bzero(sTransitionColorFadeCount,4);
-	bzero(sTransitionTextureFadeCount,4);
-	*/
-}
-
 u16 level_control_timer(s32 timerOp) {
     switch (timerOp) {
         case TIMER_CONTROL_SHOW:
@@ -325,6 +280,10 @@ void init_door_warp(struct SpawnInfo *spawnInfo, u32 arg1) {
 
     spawnInfo->startPos[0] += 300.0f * sins(spawnInfo->startAngle[1]);
     spawnInfo->startPos[2] += 300.0f * coss(spawnInfo->startAngle[1]);
+	
+	if (gSectionTimerResult!=NULL_SECTION_TIMER_RESULT){
+		practice_level_init();
+	}
 }
 
 void set_mario_initial_cap_powerup(struct MarioState *m) {
@@ -411,59 +370,73 @@ void set_mario_initial_action(struct MarioState *m, u32 spawnType, u32 actionArg
 
 void init_mario_after_warp(void) {
     struct ObjectWarpNode *spawnNode = area_get_warp_node(sWarpDest.nodeId);
-    u32 marioSpawnType = get_mario_spawn_type(spawnNode->object);
+	u32 marioSpawnType;
+	// should only fail the if stmt in practice
+	if (spawnNode){
+		marioSpawnType = get_mario_spawn_type(spawnNode->object);
 
-    if (gMarioState->action != ACT_UNINITIALIZED) {
-        gPlayerSpawnInfos[0].startPos[0] = (s16) spawnNode->object->oPosX;
-        gPlayerSpawnInfos[0].startPos[1] = (s16) spawnNode->object->oPosY;
-        gPlayerSpawnInfos[0].startPos[2] = (s16) spawnNode->object->oPosZ;
+		if (gMarioState->action != ACT_UNINITIALIZED) {
+			gPlayerSpawnInfos[0].startPos[0] = (s16) spawnNode->object->oPosX;
+			gPlayerSpawnInfos[0].startPos[1] = (s16) spawnNode->object->oPosY;
+			gPlayerSpawnInfos[0].startPos[2] = (s16) spawnNode->object->oPosZ;
 
-        gPlayerSpawnInfos[0].startAngle[0] = 0;
-        gPlayerSpawnInfos[0].startAngle[1] = spawnNode->object->oMoveAngleYaw;
-        gPlayerSpawnInfos[0].startAngle[2] = 0;
+			gPlayerSpawnInfos[0].startAngle[0] = 0;
+			gPlayerSpawnInfos[0].startAngle[1] = spawnNode->object->oMoveAngleYaw;
+			gPlayerSpawnInfos[0].startAngle[2] = 0;
 
-        if (marioSpawnType == MARIO_SPAWN_DOOR_WARP) {
-            init_door_warp(&gPlayerSpawnInfos[0], sWarpDest.arg);
-        }
+			if (marioSpawnType == MARIO_SPAWN_DOOR_WARP) {
+				init_door_warp(&gPlayerSpawnInfos[0], sWarpDest.arg);
+			}
 
-        if (sWarpDest.type == WARP_TYPE_CHANGE_LEVEL || sWarpDest.type == WARP_TYPE_CHANGE_AREA) {
-            gPlayerSpawnInfos[0].areaIndex = sWarpDest.areaIdx;
-            load_mario_area();
-        }
+			if (sWarpDest.type == WARP_TYPE_CHANGE_LEVEL || sWarpDest.type == WARP_TYPE_CHANGE_AREA) {
+				gPlayerSpawnInfos[0].areaIndex = sWarpDest.areaIdx;
+				load_mario_area();
+			}
 
-        init_mario();
-        set_mario_initial_action(gMarioState, marioSpawnType, sWarpDest.arg);
+			init_mario();
+			set_mario_initial_action(gMarioState, marioSpawnType, sWarpDest.arg);
 
-        gMarioState->interactObj = spawnNode->object;
-        gMarioState->usedObj = spawnNode->object;
-    }
+			gMarioState->interactObj = spawnNode->object;
+			gMarioState->usedObj = spawnNode->object;
+		}
+	} else {
+		// only used when loading state from instant warp area
+		if (sWarpDest.type == WARP_TYPE_CHANGE_LEVEL || sWarpDest.type == WARP_TYPE_CHANGE_AREA) {
+			gPlayerSpawnInfos[0].areaIndex = sWarpDest.areaIdx;
+			load_mario_area();
+		}
+		init_mario();
+	}
 
     reset_camera(gCurrentArea->camera);
     sWarpDest.type = WARP_TYPE_NOT_WARPING;
     sDelayedWarpOp = WARP_OP_NONE;
-    switch (marioSpawnType) {
-        case MARIO_SPAWN_UNKNOWN_03:
-            play_transition(WARP_TRANSITION_FADE_FROM_STAR, 0x10, 0x00, 0x00, 0x00);
-            break;
-        case MARIO_SPAWN_DOOR_WARP:
-            play_transition(WARP_TRANSITION_FADE_FROM_CIRCLE, 0x10, 0x00, 0x00, 0x00);
-            break;
-        case MARIO_SPAWN_TELEPORT:
-            play_transition(WARP_TRANSITION_FADE_FROM_COLOR, 0x14, 0xFF, 0xFF, 0xFF);
-            break;
-        case MARIO_SPAWN_SPIN_AIRBORNE:
-            play_transition(WARP_TRANSITION_FADE_FROM_COLOR, 0x1A, 0xFF, 0xFF, 0xFF);
-            break;
-        case MARIO_SPAWN_SPIN_AIRBORNE_CIRCLE:
-            play_transition(WARP_TRANSITION_FADE_FROM_CIRCLE, 0x10, 0x00, 0x00, 0x00);
-            break;
-        case MARIO_SPAWN_UNKNOWN_27:
-            play_transition(WARP_TRANSITION_FADE_FROM_COLOR, 0x10, 0x00, 0x00, 0x00);
-            break;
-        default:
-            play_transition(WARP_TRANSITION_FADE_FROM_STAR, 0x10, 0x00, 0x00, 0x00);
-            break;
-    }
+	// should only fail the if stmt in practice
+	if (spawnNode){
+		switch (marioSpawnType) {
+			case MARIO_SPAWN_UNKNOWN_03:
+				play_transition(WARP_TRANSITION_FADE_FROM_STAR, 0x10, 0x00, 0x00, 0x00);
+				break;
+			case MARIO_SPAWN_DOOR_WARP:
+				play_transition(WARP_TRANSITION_FADE_FROM_CIRCLE, 0x10, 0x00, 0x00, 0x00);
+				break;
+			case MARIO_SPAWN_TELEPORT:
+				play_transition(WARP_TRANSITION_FADE_FROM_COLOR, 0x14, 0xFF, 0xFF, 0xFF);
+				break;
+			case MARIO_SPAWN_SPIN_AIRBORNE:
+				play_transition(WARP_TRANSITION_FADE_FROM_COLOR, 0x1A, 0xFF, 0xFF, 0xFF);
+				break;
+			case MARIO_SPAWN_SPIN_AIRBORNE_CIRCLE:
+				play_transition(WARP_TRANSITION_FADE_FROM_CIRCLE, 0x10, 0x00, 0x00, 0x00);
+				break;
+			case MARIO_SPAWN_UNKNOWN_27:
+				play_transition(WARP_TRANSITION_FADE_FROM_COLOR, 0x10, 0x00, 0x00, 0x00);
+				break;
+			default:
+				play_transition(WARP_TRANSITION_FADE_FROM_STAR, 0x10, 0x00, 0x00, 0x00);
+				break;
+		}
+	}
 
     if (gCurrDemoInput == NULL) {
         set_background_music(gCurrentArea->musicParam, gCurrentArea->musicParam2, 0);
@@ -505,7 +478,8 @@ void init_mario_after_warp(void) {
 // used for warps inside one level
 void warp_area(void) {
     if (sWarpDest.type != WARP_TYPE_NOT_WARPING) {
-		//gLastWarpDest = sWarpDest;
+		if (gCurrLevelNum==LEVEL_CASTLE)
+			gLastWarpDest = sWarpDest;
         if (sWarpDest.type == WARP_TYPE_CHANGE_AREA) {
             level_control_timer(TIMER_CONTROL_HIDE);
             unload_mario_area();
@@ -516,8 +490,13 @@ void warp_area(void) {
     }
 }
 
+extern u32 gPrevLevel;
 // used for warps between levels
 void warp_level(void) {
+	/*if (!gPracticeWarping){
+		gLastLevelNum = gPrevLevel;
+		
+	}*/
     gCurrLevelNum = sWarpDest.levelNum;
 	gLastWarpDest = sWarpDest;
 	
@@ -662,6 +641,8 @@ void initiate_warp(s16 destLevel, s16 destArea, s16 destWarpNode, s32 arg3) {
         sWarpDest.type = WARP_TYPE_CHANGE_LEVEL;
     } else if (destLevel != gCurrLevelNum) {
         sWarpDest.type = WARP_TYPE_CHANGE_LEVEL;
+		//gLastLevelNum = gCurrLevelNum;
+		
     } else if (destArea != gCurrentArea->index) {
         sWarpDest.type = WARP_TYPE_CHANGE_AREA;
     } else {
@@ -722,7 +703,7 @@ void initiate_painting_warp(void) {
                 level_set_transition(74, basic_update);
 
                 set_mario_action(gMarioState, ACT_DISAPPEARED, 0);
-				practice_level_change_trigger();
+				practice_painting_trigger();
 
                 gMarioState->marioObj->header.gfx.node.flags &= ~GRAPH_RENDER_ACTIVE;
 
@@ -869,7 +850,7 @@ void initiate_delayed_warp(void) {
 
     if (sDelayedWarpOp != WARP_OP_NONE && --sDelayedWarpTimer == 0) {
         reset_dialog_render_state();
-
+		gLastLevelNum = gCurrLevelNum;
         if (gDebugLevelSelect && (sDelayedWarpOp & WARP_OP_TRIGGERS_LEVEL_SELECT)) {
             warp_special(-9);
         } else if (gCurrDemoInput != NULL) {
@@ -1006,49 +987,6 @@ void basic_update(UNUSED s16 *arg) {
 }
 
 int gPressedStart = 0;
-
-void practice_warp(void){
-	sWarpDest = gPracticeDest;
-	gPracticeDest.type = WARP_TYPE_NOT_WARPING;
-	reset_dialog_render_state();
-	sTransitionTimer = 0;
-	sTransitionUpdate = NULL;
-	gMarioState->numCoins = 0;
-	gHudDisplay.coins = 0;
-	gHudDisplay.wedges = 8;
-	gMarioState->health = 0x880;
-	gPracticeWarping = TRUE;
-	gMenuMode = -1;
-	gHudFlash = FALSE;
-	sPowerMeterVisibleTimer = 0;
-	sPowerMeterStoredHealth = 8;
-	sPowerMeterHUD.animation = POWER_METER_HIDDEN;
-	gWarpTransDelay = 0;
-	gWarpTransition.isActive = TRUE;
-	gWarpTransition.type = WARP_TRANSITION_FADE_FROM_COLOR;
-	gWarpTransition.time = 16;
-	
-	// set transition colors properly
-	s32 courseNum = gLevelToCourseNumTable[gPracticeDest.levelNum - 1];
-	if ((courseNum == COURSE_NONE || courseNum > COURSE_STAGES_MAX) && 
-		!(sWarpDest.levelNum==LEVEL_CASTLE_GROUNDS&&sWarpDest.nodeId==0x04)){
-		gWarpTransition.data.red = 0;
-		gWarpTransition.data.green = 0;
-		gWarpTransition.data.blue = 0;
-		set_warp_transition_rgb(0,0,0);
-	} else {
-		gWarpTransition.data.red = 255;
-		gWarpTransition.data.green = 255;
-		gWarpTransition.data.blue = 255;
-		set_warp_transition_rgb(255,255,255);
-	}
-	
-	sTransitionColorFadeCount[0] = 0;
-	sTransitionColorFadeCount[1] = 0;
-	sTransitionColorFadeCount[2] = 0;
-	sTransitionColorFadeCount[3] = 0;
-	bzero(sTransitionTextureFadeCount,4);
-}
 
 s32 play_mode_normal(void) {
     if (gCurrDemoInput != NULL) {
@@ -1224,8 +1162,11 @@ static s32 play_mode_unused(void) {
     return 0;
 }
 
+extern u8 gInStarSelect;
 s32 update_level(void) {
     s32 changeLevel;
+	
+	gInStarSelect = FALSE;
 	
 	save_state_update();
 	if (gRenderPracticeMenu) return 0;
@@ -1305,14 +1246,22 @@ s32 init_level(void) {
                     } else if (!configSkipIntro) {
                         set_mario_action(gMarioState, ACT_INTRO_CUTSCENE, 0);
                         useCutsceneFade = 1;
-                    }
+                    } else {
+						// intro skip, place mario forward
+						gMarioState->pos[2] = 4354.0f;
+						gPlayerCameraState->pos[2] = 4354.0f;
+						useCutsceneFade = 2;
+						set_mario_action(gMarioState, ACT_FAKE_INTRO_CUTSCENE, 0);
+					}
                 }
             }
         }
 
-        if (useCutsceneFade != 0) {
+        if (useCutsceneFade == 1) {
             play_transition(WARP_TRANSITION_FADE_FROM_COLOR, 0x5A, 0xFF, 0xFF, 0xFF);
-        } else {
+        } else if (useCutsceneFade == 2) {
+			play_transition(WARP_TRANSITION_FADE_FROM_COLOR, 0x10, 0xFF, 0xFF, 0xFF);
+		} else {
             play_transition(WARP_TRANSITION_FADE_FROM_STAR, 0x10, 0xFF, 0xFF, 0xFF);
         }
 
@@ -1338,9 +1287,6 @@ s32 init_level(void) {
 	}
 	
 	practice_level_init();
-	
-	if (gPracticeWarping)
-		printf("disabled practice warp\n");
 	gPracticeWarping = FALSE;
 
     return 1;
@@ -1392,6 +1338,7 @@ s32 lvl_init_from_save_file(UNUSED s16 arg0, s32 levelNum) {
     gCurrCreditsEntry = NULL;
     gSpecialTripleJump = 0;
 	
+	gLastLevelNum = gCurrLevelNum;
 	gLastWarpDest.levelNum = levelNum;
 	gLastWarpDest.areaIdx = 1;
 	gLastWarpDest.nodeId = 0x4;
@@ -1446,7 +1393,8 @@ s32 lvl_set_current_level(UNUSED s16 arg0, s32 levelNum) {
 	
 	if (gNoStarSelectWarp!=0) {
 		gNoStarSelectWarp = FALSE;
-		gDisableRendering = FALSE;
+		if (!gSaveStateWarpDelay)
+			gDisableRendering = FALSE;
 		return 0;
 	}
 

@@ -14,6 +14,7 @@
 #include "types.h"
 
 #include <stdio.h>
+#include <assert.h>
 
 /**
  * An unused linked list struct that seems to have been replaced by ObjectNode.
@@ -190,7 +191,7 @@ void unload_object(struct Object *obj) {
     obj->prevObj = NULL;
 
     obj->header.gfx.throwMatrix = NULL;
-    func_803206F8(obj->header.gfx.cameraToObject);
+    stop_sounds_from_source(obj->header.gfx.cameraToObject);
     geo_remove_child(&obj->header.gfx.node);
     geo_add_child(&gObjParentGraphNode, &obj->header.gfx.node);
 
@@ -221,6 +222,8 @@ struct Object *allocate_object(struct ObjectNode *objList) {
         if (unimportantObj == NULL) {
             // We've met with a terrible fate.
 			printf("Ran out of memory! Cannot allocate object!\n");
+			fflush(stdout);
+			assert(FALSE);
             while (TRUE) {
             }
         } else {
@@ -248,13 +251,14 @@ struct Object *allocate_object(struct ObjectNode *objList) {
     for (i = 0; i < 0x50; i++) {
         obj->rawData.asS32[i] = 0;
         obj->ptrData.asVoidPtr[i] = NULL;
+		//obj->rawData.asVoidPtr[i] = NULL;
     }
 #else
     // -O2 needs everything until = on the same line
     for (i = 0; i < 0x50; i++) obj->rawData.asS32[i] = 0;
 #endif
 
-    obj->unused1 = 0;
+    //obj->unused1 = 0;
     obj->bhvStackIndex = 0;
     obj->bhvDelayTimer = 0;
 
@@ -263,7 +267,7 @@ struct Object *allocate_object(struct ObjectNode *objList) {
     obj->hurtboxRadius = 0.0f;
     obj->hurtboxHeight = 0.0f;
     obj->hitboxDownOffset = 0.0f;
-    obj->unused2 = 0;
+    //obj->unused2 = 0;
 
     obj->platform = NULL;
     obj->collisionData = NULL;

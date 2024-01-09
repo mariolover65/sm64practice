@@ -167,7 +167,7 @@ void render_hud_cannon_reticle(void);
 void reset_red_coins_collected(void);
 s16 render_menus_and_dialogs(void);
 void shade_screen(void);
-void shade_screen_rect(s32 x,s32 y,s32 w,s32 h);
+void shade_screen_rect(s32 x,s32 y,s32 w,s32 h,u8 r,u8 g,u8 b,u8 a);
 
 typedef struct {
 	u8 r;

@@ -194,9 +194,9 @@ GRASS_FILES                  := $(patsubst %.png,%.inc.c,$(wildcard $(TEXTURE_DI
 PRACTICE_FILES               := $(patsubst %.png,%.inc.c,$(wildcard $(EXTDATA_DIR)/textures/*.png))
 
 # Texture Files
-$(BUILD_DIR)/bin/practice.o: $(addprefix $(BUILD_DIR)/,$(PRACTICE_FILES))
+$(BUILD_DIR)/bin/practicetex.o: $(addprefix $(BUILD_DIR)/,$(PRACTICE_FILES))
 
-$(BUILD_DIR)/bin/segment2.o: $(BUILD_DIR)/bin/practice.o $(addprefix $(BUILD_DIR)/,$(SEGMENT2_FILES))
+$(BUILD_DIR)/bin/segment2.o: $(BUILD_DIR)/bin/practicetex.o $(addprefix $(BUILD_DIR)/,$(SEGMENT2_FILES))
 $(BUILD_DIR)/bin/title_screen_bg.o: $(addprefix $(BUILD_DIR)/,$(TITLE_SCREEN_BG_FILES))
 $(BUILD_DIR)/bin/spooky.o: $(addprefix $(BUILD_DIR)/,$(SPOOKY_FILES))
 $(BUILD_DIR)/bin/generic.o: $(addprefix $(BUILD_DIR)/,$(GENERIC_FILES))

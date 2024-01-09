@@ -44,10 +44,13 @@
 #include "spawn_sound.h"
 #include "thread6.h"
 
+#include "practice.h"
+#include "pc/configfile.h"
+
 #define o gCurrentObject
 
 // BSS
-s16 D_8035FF10;
+s16 gSparklePhase;
 
 struct WFRotatingPlatformData {
     s16 pad;
@@ -195,15 +198,15 @@ void spawn_sparkle_particles(s32 n, s32 a1, s32 a2, s32 r) {
     s32 i;
     s16 separation = 0x10000 / n; // Evenly spread around a circle
     for (i = 0; i < n; i++) {
-        spawn_object_relative(0, sins(D_8035FF10 + i * separation) * a1, (i + 1) * a2,
-                              coss(D_8035FF10 + i * separation) * a1, o, MODEL_NONE, bhvSparkleSpawn);
+        spawn_object_relative(0, sins(gSparklePhase + i * separation) * a1, (i + 1) * a2,
+                              coss(gSparklePhase + i * separation) * a1, o, MODEL_NONE, bhvSparkleSpawn);
     }
 
   if (1)
   {
   }
 
-    D_8035FF10 += r * 0x100;
+    gSparklePhase += r * 0x100;
 }
 
 #include "behaviors/beta_boo_key.inc.c"

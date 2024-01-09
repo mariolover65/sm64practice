@@ -2185,6 +2185,23 @@ const Gfx dl_draw_text_bg_box[] = {
     gsSPEndDisplayList(),
 };
 
+static const Vtx vertex_xlu_rect[] = {
+    {{{     0,     -1,      0}, 0, {     0,      0}, {0xff, 0xff, 0xff, 0xff}}},
+    {{{     1,     -1,      0}, 0, {     0,      0}, {0xff, 0xff, 0xff, 0xff}}},
+    {{{     1,      0,      0}, 0, {     0,      0}, {0xff, 0xff, 0xff, 0xff}}},
+    {{{     0,      0,      0}, 0, {     0,      0}, {0xff, 0xff, 0xff, 0xff}}},
+};
+
+const Gfx dl_draw_xlu_rect[] = {
+    gsDPPipeSync(),
+    gsSPClearGeometryMode(G_LIGHTING),
+    gsDPSetCombineMode(G_CC_FADE, G_CC_FADE),
+    gsDPSetRenderMode(G_RM_XLU_SURF, G_RM_XLU_SURF2),
+    gsSPVertex(vertex_xlu_rect, 4, 0),
+    gsSP2Triangles( 0,  1,  2, 0x0,  0,  2,  3, 0x0),
+    gsSPEndDisplayList(),
+};
+
 #ifndef VERSION_EU
 // 0x0200EE28 - 0x0200EE68
 static const Vtx vertex_ia8_char[] = {

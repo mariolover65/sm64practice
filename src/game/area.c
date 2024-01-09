@@ -167,19 +167,19 @@ struct ObjectWarpNode *area_get_warp_node_from_params(struct Object *o) {
 }
 
 void load_obj_warp_nodes(void) {
-    struct ObjectWarpNode *sp24;
-    struct Object *sp20 = (struct Object *) gObjParentGraphNode.children;
+    struct ObjectWarpNode *warpNode;
+    struct Object *childIt = (struct Object *) gObjParentGraphNode.children;
 
     do {
-        struct Object *sp1C = sp20;
+        struct Object *warpObj = childIt;
 
-        if (sp1C->activeFlags != ACTIVE_FLAG_DEACTIVATED && get_mario_spawn_type(sp1C) != 0) {
-            sp24 = area_get_warp_node_from_params(sp1C);
-            if (sp24 != NULL) {
-                sp24->object = sp1C;
+        if (warpObj->activeFlags != ACTIVE_FLAG_DEACTIVATED && get_mario_spawn_type(warpObj) != 0) {
+            warpNode = area_get_warp_node_from_params(warpObj);
+            if (warpNode != NULL) {
+                warpNode->object = warpObj;
             }
         }
-    } while ((sp20 = (struct Object *) sp20->header.gfx.node.next)
+    } while ((childIt = (struct Object *) childIt->header.gfx.node.next)
              != (struct Object *) gObjParentGraphNode.children);
 }
 
@@ -264,7 +264,7 @@ void unload_area(void) {
 }
 
 void load_mario_area(void) {
-    func_80320890();
+    stop_sounds_in_continuous_banks();
     load_area(gMarioSpawnInfo->areaIndex);
 
     if (gCurrentArea->index == gMarioSpawnInfo->areaIndex) {

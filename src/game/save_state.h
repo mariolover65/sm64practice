@@ -12,6 +12,13 @@
 
 #include <stdio.h>
 
+enum WarpCheckpointStateType {
+	WARP_CHECKPOINT_STATE_NONE,
+	WARP_CHECKPOINT_STATE_LLL,
+	WARP_CHECKPOINT_STATE_SSL,
+	WARP_CHECKPOINT_STATE_TTM
+};
+
 typedef struct {
 	struct Camera areaCams[8];
 	struct LakituState lakituState;
@@ -25,6 +32,7 @@ typedef struct {
 	struct CameraStoredInfo cameraStoreCutscene;
 	struct ParallelTrackingPoint* parallelTrackPath;
 	struct PlayerGeometry marioGeometry;
+	struct HandheldShakePoint handheldShakeSpline[4];
 	
 	s16 cameraMovementFlags;
 	s16 cutsceneTimer;
@@ -45,6 +53,10 @@ typedef struct {
 	s16 lakituDist;
 	s16 lakituPitch;
 	s16 camStatusFlags;
+	s16 handheldShakePitch;
+	s16 handheldShakeYaw;
+	s16 handheldShakeRoll;
+	s16 horizCamHold;
 	f32 panDist;
 	f32 cannonYOffset;
 	f32 zoomDist;
@@ -76,10 +88,17 @@ typedef struct {
 } MacroObjectData;
 
 typedef struct {
+	u32 length;
+	struct Object** data;
+} WarpObjectData;
+
+typedef struct {
 	u16 macroMask;
 	u16 respawnMask;
+	u16 warpMask;
 	MacroObjectData macroData[8];
 	RespawnInfoData respawnData[8];
+	WarpObjectData warpData[8];
 } AreaData;
 
 // list of saved objects
@@ -103,7 +122,8 @@ typedef struct {
 	struct WarpDest warpDest;
 	struct WarpDest loc;
 	u32 globalTimer;
-	struct SaveBuffer saveBuffer;
+	struct SaveFile saveFile;
+	u16 soundMode;
 	s16 currSaveFileNum;
 	s16 currActNum;
 	s16 currCourseNum;
@@ -118,6 +138,7 @@ typedef struct {
 	u8 nonstop;
 	u8 lastCompletedCourseNum;
 	u8 lastCompletedStarNum;
+	s32 lastLevelNum;
 	
 	u16 areaUpdateCounter;
 	
@@ -172,20 +193,35 @@ typedef struct {
 	s16 wdwWaterLevelChanging;
 	s32 wdwWaterLevelSet;
 	
+	u32 aPressCount;
+	
 	s32 envLevels[2];
 	s16 envRegionHeights[3];
+	s16 sparklePhase;
+	s16 swimStrength;
 	
 	s16 snowParticleCount;
 	s16 bubbleParticleCount;
 	struct EnvFxParticle* envBuffer;
 } LevelState;
 
+// state needed to start a full-game replay
+typedef struct {
+	u8 introSkip;
+	u8 introSkipTiming;
+	u8 nonstop;
+	u8 noInvisibleWalls;
+	u8 stageText;
+} GameInitState;
+
 // only the state needed for a level init
 typedef struct {
 	struct WarpDest loc;
 	
 	u32 globalTimer;
-	struct SaveBuffer saveBuffer;
+	struct SaveFile saveFile;
+	u16 soundMode;
+	struct HandheldShakePoint handheldShakeSpline[4];
 	Vec3f holp;
 	s16 currSaveFileNum;
 	s16 currActNum;
@@ -205,6 +241,11 @@ typedef struct {
 	u8 introSkip;
 	s8 dddPaintingStatus;
 	
+	u8 menuHoldKeyIndex;
+	u8 menuHoldKeyTimer;
+	
+	s32 lastLevelNum;
+	
 	u8 practiceSubStatus;
 	u8 practiceStageText;
 	
@@ -212,10 +253,13 @@ typedef struct {
 	u16 randCalls;
 	s16 numStars;
 	s16 camSelectionFlags;
+	u16 sparklePhase;
 	s8 numLives;
+	u8 warpCheckpointType;
 	s16 health;
 	s32 envLevels[2];
 	s16 envRegionHeights[3];
+	s16 swimStrength;
 	
 	s16 slideYaw;
 	s16 twirlYaw;
@@ -267,6 +311,12 @@ typedef struct {
 	struct WarpDest lastWarpDest;
 	s32 sectionTimer;
 	s32 sectionTimerResult;
+	
+	GhostFrame* ghostFrame;
+	GhostAreaChange* ghostArea;
+	u32 ghostAreaCounter;
+	u32 ghostIndex;
+	
 	u8 practiceSubStatus;
 	u8 practiceStageText;
 	u8 introSkip;
@@ -283,14 +333,36 @@ typedef struct {
 	Replay* replayState;
 } SaveState;
 
+typedef struct SaveStateList SaveStateList;
+struct SaveStateList {
+	SaveStateList* next;
+	SaveStateList* prev;
+	SaveState* state;
+};
+
 
 extern u8 gHasStateSaved;
-extern SaveState gCurrSaveState;
-extern Replay* gSaveStateReplay;
+extern SaveStateList* gCurrSaveStateSlot;
+extern SaveStateList* gCurrLoadStateSlot;
+extern u32 gCurrSaveStateIndex;
+extern u32 gCurrLoadStateIndex;
 
 void init_state(SaveState*);
+SaveState* alloc_state(void);
+void free_state(SaveState*);
+void alloc_state_at_save_slot(void);
+void init_state_list(void);
+void free_state_list(void);
+void clear_save_states(void);
+void save_slot_increment(void);
+void save_slot_decrement(void);
+void load_slot_increment(void);
+void load_slot_decrement(void);
+
+void save_game_init_state(GameInitState*);
 void save_level_init_state(LevelInitState*,struct WarpDest*);
 void save_state(SaveState*);
+void load_game_init_state(const GameInitState*);
 void load_level_init_state(const LevelInitState*);
 void load_post_level_init_state(const LevelInitState*);
 void load_state(const SaveState*);
@@ -301,5 +373,8 @@ u8 deserialize_state(FILE*,SaveState*);
 
 void serialize_level_init_state(FILE*,const LevelInitState*);
 u8 deserialize_level_init_state(FILE*,LevelInitState*);
+
+void serialize_game_init_state(FILE*,const GameInitState*);
+u8 deserialize_game_init_state(FILE*,GameInitState*);
 
 #endif

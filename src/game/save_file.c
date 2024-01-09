@@ -11,7 +11,6 @@
 #include "course_table.h"
 #include "thread6.h"
 #include "macros.h"
-#include "pc/ini.h"
 
 #define MENU_DATA_MAGIC 0x4849
 #define SAVE_FILE_MAGIC 0x4441
@@ -44,12 +43,6 @@ s8 gLevelToCourseNumTable[] = {
 
 STATIC_ASSERT(ARRAY_COUNT(gLevelToCourseNumTable) == LEVEL_COUNT - 1,
               "change this array if you are adding levels");
-
-#ifdef TEXTSAVES
-
-#include "text_save.inc.h"
-
-#endif
 
 // This was probably used to set progress to 100% for debugging, but
 // it was removed from the release ROM.
@@ -345,16 +338,7 @@ void save_file_do_save(s32 fileIndex) {
     if (fileIndex < 0 || fileIndex >= NUM_SAVE_FILES)
         return;
 
-    if (gSaveFileModified)
-#ifdef TEXTSAVES
-    {
-        // Write to text file
-        write_text_save(fileIndex);
-        gSaveFileModified = FALSE;
-        gMainMenuDataModified = FALSE;
-    }
-#else 
-    {
+    if (gSaveFileModified) {
         // Compute checksum
         add_save_block_signature(&gSaveBuffer.files[fileIndex][0],
                                  sizeof(gSaveBuffer.files[fileIndex][0]), SAVE_FILE_MAGIC);
@@ -369,7 +353,6 @@ void save_file_do_save(s32 fileIndex) {
         gSaveFileModified = FALSE;
     }
     save_main_menu_data();
-#endif
 }
 
 void save_file_erase(s32 fileIndex) {
@@ -404,13 +387,6 @@ void save_file_load_all(void) {
 
     bzero(&gSaveBuffer, sizeof(gSaveBuffer));
 
-#ifdef TEXTSAVES
-    for (file = 0; file < NUM_SAVE_FILES; file++) {
-        read_text_save(file);
-    }
-    gSaveFileModified = TRUE;
-    gMainMenuDataModified = TRUE;
-#else
     s32 validSlots;
     read_eeprom_data(&gSaveBuffer, sizeof(gSaveBuffer));
 
@@ -448,7 +424,6 @@ void save_file_load_all(void) {
                 break;
         }
     }
-#endif // TEXTSAVES
     stub_save_file_1();
 }
 
@@ -764,4 +739,9 @@ s32 check_warp_checkpoint(struct WarpNode *warpNode) {
     }
 
     return isWarpCheckpointActive;
+}
+
+void clear_current_save_file(void){
+	bzero(&gSaveBuffer.files[gCurrSaveFileNum - 1][0],sizeof(gSaveBuffer.files[gCurrSaveFileNum - 1][0]));
+	bzero(&gSaveBuffer.files[gCurrSaveFileNum - 1][1],sizeof(gSaveBuffer.files[gCurrSaveFileNum - 1][1]));
 }

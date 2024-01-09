@@ -71,50 +71,56 @@ unsigned int configKeyStickDown[MAX_BINDS]  = { 0x001F,   VK_INVALID, VK_INVALID
 unsigned int configKeyStickLeft[MAX_BINDS]  = { 0x001E,   VK_INVALID, VK_INVALID };
 unsigned int configKeyStickRight[MAX_BINDS] = { 0x0020,   VK_INVALID, VK_INVALID };
 unsigned int configStickDeadzone = 16; // 16*DEADZONE_STEP=4960 (the original default deadzone)
-unsigned int configRumbleStrength = 50;
+
+unsigned int configKeyDUp[MAX_BINDS] = { VK_INVALID, 0x100B, VK_INVALID };
+unsigned int configKeyDDown[MAX_BINDS] = { VK_INVALID, 0x100C, VK_INVALID };
+unsigned int configKeyDLeft[MAX_BINDS] = { VK_INVALID, 0x100D, VK_INVALID };
+unsigned int configKeyDRight[MAX_BINDS] = { VK_INVALID, 0x100E, VK_INVALID };
+
 #ifdef EXTERNAL_DATA
 bool configPrecacheRes = true;
 #endif
-#ifdef BETTERCAMERA
-// BetterCamera settings
-unsigned int configCameraXSens      = 50;
-unsigned int configCameraYSens      = 50;
-unsigned int configCameraAggr       = 0;
-unsigned int configCameraPan        = 0;
-unsigned int configCameraDegrade    = 10; // 0 - 100%
-bool         configCameraInvertX    = true;
-bool         configCameraInvertY    = false;
-bool         configEnableCamera     = false;
-bool         configCameraAnalog     = true;
-bool         configCameraMouse      = false;
-#endif
+
 bool         configSkipIntro        = false;
 bool         configHUD              = true;
 bool         configFileSelectStart  = false;
-bool         configAnglerOverride   = false;
+bool         configIntroSkipTiming  = true;
+bool         configAnglerOverride   = true;
 bool         configNonstop          = false;
 #ifdef DISCORDRPC
 bool         configDiscordRPC       = true;
 #endif
 
+bool configShowTimer = true;
+bool configShowControls = false;
 bool configShowPos = false;
 bool configShowHOLP = false;
 bool configShowAngle = false;
 bool configShowVel = false;
+bool configShowSlidingVel = false;
+bool configShowTwirlYaw = false;
 bool configShowMaxHeight = false;
 bool configShowWallkickFrame = false;
 bool configShowWallkickAngle = false;
 bool configShowBowserInfo = false;
 bool configShowRNGInfo = false;
 bool configShowEfficiency = false;
+bool configShowSwimStrength = false;
+bool configShowSwimTrainer = false;
+bool configShowAPressCount = false;
+bool configShowGlobalTimer = false;
 bool configUseGhost = false;
 bool configGhostDistanceFade = true;
 bool configResetMusic = false;
 bool configDisableMusic = false;
+bool configNoInvisibleWalls = false;
+bool configDisableA = false;
+bool configYellowStars = false;
 
 u32 configAngleDisplayType = 0;
 u32 configStageText = 0;
-u32 configPracticeType = 1;
+// practice type game
+u32 configPracticeType = 3;
 u32 configGhostOpacity = 96;
 
 static const struct ConfigOption options[] = {
@@ -139,12 +145,15 @@ static const struct ConfigOption options[] = {
     {.name = "key_cdown",            .type = CONFIG_TYPE_BIND, .uintValue = configKeyCDown},
     {.name = "key_cleft",            .type = CONFIG_TYPE_BIND, .uintValue = configKeyCLeft},
     {.name = "key_cright",           .type = CONFIG_TYPE_BIND, .uintValue = configKeyCRight},
+	{.name = "key_dup",              .type = CONFIG_TYPE_BIND, .uintValue = configKeyDUp},
+	{.name = "key_ddown",            .type = CONFIG_TYPE_BIND, .uintValue = configKeyDDown},
+	{.name = "key_dleft",            .type = CONFIG_TYPE_BIND, .uintValue = configKeyDLeft},
+	{.name = "key_dright",           .type = CONFIG_TYPE_BIND, .uintValue = configKeyDRight},
     {.name = "key_stickup",          .type = CONFIG_TYPE_BIND, .uintValue = configKeyStickUp},
     {.name = "key_stickdown",        .type = CONFIG_TYPE_BIND, .uintValue = configKeyStickDown},
     {.name = "key_stickleft",        .type = CONFIG_TYPE_BIND, .uintValue = configKeyStickLeft},
     {.name = "key_stickright",       .type = CONFIG_TYPE_BIND, .uintValue = configKeyStickRight},
     {.name = "stick_deadzone",       .type = CONFIG_TYPE_UINT, .uintValue = &configStickDeadzone},
-    {.name = "rumble_strength",      .type = CONFIG_TYPE_UINT, .uintValue = &configRumbleStrength},
     #ifdef EXTERNAL_DATA
     {.name = "precache",             .type = CONFIG_TYPE_BOOL, .boolValue = &configPrecacheRes},
     #endif
@@ -161,6 +170,7 @@ static const struct ConfigOption options[] = {
     {.name = "bettercam_degrade",    .type = CONFIG_TYPE_UINT, .uintValue = &configCameraDegrade},
     #endif
     {.name = "skip_intro",           .type = CONFIG_TYPE_BOOL, .boolValue = &configSkipIntro},
+	{.name = "intro_skip_timing",    .type = CONFIG_TYPE_BOOL, .boolValue = &configIntroSkipTiming},
     {.name = "file_select_start",    .type = CONFIG_TYPE_BOOL, .boolValue = &configFileSelectStart},
 	{.name = "angler_override",      .type = CONFIG_TYPE_BOOL, .boolValue = &configAnglerOverride},
 	{.name = "nonstop",              .type = CONFIG_TYPE_BOOL, .boolValue = &configNonstop},
@@ -168,7 +178,11 @@ static const struct ConfigOption options[] = {
     {.name = "discordrpc_enable",    .type = CONFIG_TYPE_BOOL, .boolValue = &configDiscordRPC},
     #endif 
 	
+	{.name = "practice_show_timer",            .type = CONFIG_TYPE_BOOL, .boolValue = &configShowTimer},
+	{.name = "practice_show_controls",         .type = CONFIG_TYPE_BOOL, .boolValue = &configShowControls},
 	{.name = "practice_show_vel",              .type = CONFIG_TYPE_BOOL, .boolValue = &configShowVel},
+	{.name = "practice_show_sliding_vel",      .type = CONFIG_TYPE_BOOL, .boolValue = &configShowSlidingVel},
+	{.name = "practice_show_twirl_yaw",        .type = CONFIG_TYPE_BOOL, .boolValue = &configShowTwirlYaw},
 	{.name = "practice_show_pos",              .type = CONFIG_TYPE_BOOL, .boolValue = &configShowPos},
 	{.name = "practice_show_holp",             .type = CONFIG_TYPE_BOOL, .boolValue = &configShowHOLP},
 	{.name = "practice_show_angle",            .type = CONFIG_TYPE_BOOL, .boolValue = &configShowAngle},
@@ -178,10 +192,17 @@ static const struct ConfigOption options[] = {
 	{.name = "practice_show_bowser_info",      .type = CONFIG_TYPE_BOOL, .boolValue = &configShowBowserInfo},
 	{.name = "practice_show_rng_info",         .type = CONFIG_TYPE_BOOL, .boolValue = &configShowRNGInfo},
 	{.name = "practice_show_efficiency",       .type = CONFIG_TYPE_BOOL, .boolValue = &configShowEfficiency},
+	{.name = "practice_show_swim_strength",    .type = CONFIG_TYPE_BOOL, .boolValue = &configShowSwimStrength},
+	{.name = "practice_show_swim_trainer",     .type = CONFIG_TYPE_BOOL, .boolValue = &configShowSwimTrainer},
+	{.name = "practice_show_a_press_count",    .type = CONFIG_TYPE_BOOL, .boolValue = &configShowAPressCount},
+	{.name = "practice_show_global_timer",     .type = CONFIG_TYPE_BOOL, .boolValue = &configShowGlobalTimer},
 	{.name = "practice_use_ghost",             .type = CONFIG_TYPE_BOOL, .boolValue = &configUseGhost},
 	{.name = "practice_ghost_distance_fade",   .type = CONFIG_TYPE_BOOL, .boolValue = &configGhostDistanceFade},
 	{.name = "practice_reset_music",           .type = CONFIG_TYPE_BOOL, .boolValue = &configResetMusic},
 	{.name = "practice_disable_music",         .type = CONFIG_TYPE_BOOL, .boolValue = &configDisableMusic},
+	{.name = "no_invisible_walls",             .type = CONFIG_TYPE_BOOL, .boolValue = &configNoInvisibleWalls},
+	{.name = "disable_a_button",               .type = CONFIG_TYPE_BOOL, .boolValue = &configDisableA},
+	{.name = "yellow_stars",                   .type = CONFIG_TYPE_BOOL, .boolValue = &configYellowStars},
 	
 	{.name = "practice_type",                  .type = CONFIG_TYPE_UINT, .uintValue = &configPracticeType},
 	{.name = "practice_angle_display_type",    .type = CONFIG_TYPE_UINT, .uintValue = &configAngleDisplayType},
@@ -274,12 +295,16 @@ void configfile_load(const char *filename) {
     fs_file_t *file;
     char *line;
 
+#ifndef NDEBUG
     printf("Loading configuration from '%s'\n", filename);
+#endif
 
     file = fs_open(filename);
     if (file == NULL) {
         // Create a new config file and save defaults
+#ifndef NDEBUG
         printf("Config file '%s' not found. Creating it.\n", filename);
+#endif
         configfile_save(filename);
         return;
     }
@@ -307,9 +332,13 @@ void configfile_load(const char *filename) {
                         break;
                     }
                 }
+#ifndef NDEBUG
                 if (option == NULL)
                     printf("unknown option '%s'\n", tokens[0]);
                 else {
+#else
+				if (option){
+#endif
                     switch (option->type) {
                         case CONFIG_TYPE_BOOL:
                             if (strcmp(tokens[1], "true") == 0)
@@ -330,9 +359,11 @@ void configfile_load(const char *filename) {
                         default:
                             assert(0); // bad type
                     }
+#ifndef NDEBUG
                     printf("option: '%s', value:", tokens[0]);
                     for (int i = 1; i < numTokens; ++i) printf(" '%s'", tokens[i]);
                     printf("\n");
+#endif
                 }
             } else
                 puts("error: expected value");
@@ -347,7 +378,9 @@ void configfile_load(const char *filename) {
 void configfile_save(const char *filename) {
     FILE *file;
 
+#ifndef NDEBUG
     printf("Saving configuration to '%s'\n", filename);
+#endif
 
     file = fopen(fs_get_write_path(filename), "w");
     if (file == NULL) {

@@ -389,6 +389,7 @@ Gfx *geo_act_selector_strings(s16 callContext, UNUSED struct GraphNode *node) {
     return NULL;
 }
 
+extern u8 gInStarSelect;
 /**
  * Initiates act selector values before entering a main course.
  * Also load how much stars a course has, without counting the 100 coin star.
@@ -408,6 +409,8 @@ s32 lvl_init_act_selector_values_and_stars(UNUSED s32 arg, UNUSED s32 unused) {
     if (stars & (1 << 6)) {
         sObtainedStars--;
     }
+	
+	gInStarSelect = TRUE;
 
     //! no return value
 #ifdef AVOID_UB
@@ -420,6 +423,7 @@ s32 lvl_init_act_selector_values_and_stars(UNUSED s32 arg, UNUSED s32 unused) {
  * Also updates objects and returns act number selected after is chosen.
  */
 s32 lvl_update_obj_and_load_act_button_actions(UNUSED s32 arg, UNUSED s32 unused) {
+	gInStarSelect = TRUE;
     if (sActSelectorMenuTimer >= 11) {
         // If any of these buttons are pressed, play sound and go to course act
 #ifndef VERSION_EU
@@ -440,6 +444,7 @@ s32 lvl_update_obj_and_load_act_button_actions(UNUSED s32 arg, UNUSED s32 unused
                 sLoadedActNum = sInitSelectedActNum;
             }
             gDialogCourseActNum = sSelectedActIndex + 1;
+			timer_freeze();
         }
     }
 

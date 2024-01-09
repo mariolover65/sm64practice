@@ -74,6 +74,7 @@ struct SaveBuffer
     struct MainMenuSaveData menuData[2];
 };
 
+extern struct SaveBuffer gSaveBuffer;
 extern u8 gLastCompletedCourseNum;
 extern u8 gLastCompletedStarNum;
 extern s8 sUnusedGotGlobalCoinHiScore;
@@ -149,6 +150,8 @@ void save_file_move_cap_to_default_location(void);
 void disable_warp_checkpoint(void);
 void check_if_should_set_warp_checkpoint(struct WarpNode *warpNode);
 s32 check_warp_checkpoint(struct WarpNode *warpNode);
+
+void clear_current_save_file(void);
 
 #ifdef VERSION_EU
 enum EuLanguages {

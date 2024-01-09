@@ -831,7 +831,6 @@ u32 interact_star_or_key(struct MarioState *m, UNUSED u32 interactType, struct O
 		practice_star_grab();
 		
         if (grandStar){
-			practice_game_win();
             return set_mario_action(m, ACT_JUMBO_STAR_CUTSCENE, 0);
         }
 		
@@ -961,7 +960,8 @@ u32 interact_warp_door(struct MarioState *m, UNUSED u32 interactType, struct Obj
 
             m->interactObj = o;
             m->usedObj = o;
-			timer_freeze();
+			if (gCurrLevelNum==LEVEL_CASTLE)
+				practice_door_exit();
             return set_mario_action(m, doorAction, actionArg);
         }
     }
@@ -1617,7 +1617,9 @@ u32 interact_cap(struct MarioState *m, UNUSED u32 interactType, struct Object *o
         if (capMusic != 0) {
             play_cap_music(capMusic);
         }
-
+		
+		timer_freeze();
+		
         return TRUE;
     }
 

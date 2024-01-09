@@ -39,6 +39,7 @@ extern f32 gCosineTable[];
 void *vec3f_copy(Vec3f dest, const Vec3f src);
 void *vec3f_set(Vec3f dest, f32 x, f32 y, f32 z);
 void *vec3f_add(Vec3f dest, Vec3f a);
+void *vec3f_sub(Vec3f dest, Vec3f a);
 void *vec3f_sum(Vec3f dest, Vec3f a, Vec3f b);
 void *vec3f_dif(Vec3f dest, Vec3f a, Vec3f b);
 void *vec3f_mul(Vec3f dest, f32 a);

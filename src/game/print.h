@@ -29,5 +29,8 @@ void print_text_fmt_int(s32 x, s32 y, const char *str, s32 n);
 void print_text(s32 x, s32 y, const char *str);
 void print_text_centered(s32 x, s32 y, const char *str);
 void render_text_labels(void);
+void render_colored_sprite(const u8* sprite,s32 x,s32 y,u8 r,u8 g,u8 b,u8 a);
+void render_big_colored_sprite(const u8* sprite,s32 x,s32 y,u8 r,u8 g,u8 b,u8 a);
+void render_cannon_sprite(s32 x,s32 y,u8 open);
 
 #endif // PRINT_H

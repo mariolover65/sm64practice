@@ -86,12 +86,16 @@ bool fs_init(const char **rodirs, const char *gamedir, const char *writepath) {
     // expand and remember the write path
     strncpy(fs_writepath, fs_convert_path(buf, sizeof(buf), writepath), sizeof(fs_writepath));
     fs_writepath[sizeof(fs_writepath)-1] = 0;
+#ifndef NDEBUG
     printf("fs: writepath set to `%s`\n", fs_writepath);
+#endif
 
     // remember the game directory name
     strncpy(fs_gamedir, gamedir, sizeof(fs_gamedir));
     fs_gamedir[sizeof(fs_gamedir)-1] = 0;
+#ifndef NDEBUG
     printf("fs: gamedir set to `%s`\n", fs_gamedir);
+#endif
 
     // first, scan all possible paths and mount all basedirs in them
     for (const char **p = rodirs; p && *p; ++p)
@@ -151,7 +155,9 @@ bool fs_mount(const char *realpath) {
         fs_searchpaths->prev = dir;
     fs_searchpaths = dir;
 
+#ifndef NDEBUG
     printf("fs: mounting '%s'\n", realpath);
+#endif
 
     return true;
 }

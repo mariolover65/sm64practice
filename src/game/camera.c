@@ -305,6 +305,7 @@ s16 sCSideButtonYaw;
 /**
  * Sound timer used to space out sounds in behind Mario mode
  */
+ // also used to hold the camera horizontal during flying/swimming
 s16 sBehindMarioSoundTimer;
 
 /**
@@ -3392,10 +3393,13 @@ void init_camera(struct Camera *c) {
 
         //! Hardcoded position checks determine which cutscene to play when Mario enters castle grounds.
         case LEVEL_CASTLE_GROUNDS:
-            if (is_within_100_units_of_mario(-1328.f, 260.f, 4664.f) != 1) {
+			// second check for intro skip mario placement
+            if (is_within_100_units_of_mario(-1328.f, 260.f, 4664.f) != 1 && 
+				is_within_100_units_of_mario(-1328.f, 260.f, 4354.f) != 1) {
                 marioOffset[0] = -400.f;
                 marioOffset[2] = -800.f;
             }
+			
             if (is_within_100_units_of_mario(-6901.f, 2376.f, -6509.f) == 1) {
                 start_cutscene(c, CUTSCENE_EXIT_WATERFALL);
             }
@@ -3583,11 +3587,11 @@ void stub_camera_2(UNUSED struct Camera *c) {
 void stub_camera_3(UNUSED struct Camera *c) {
 }
 
-void vec3f_sub(Vec3f dst, Vec3f src) {
+/*void vec3f_sub(Vec3f dst, Vec3f src) {
     dst[0] -= src[0];
     dst[1] -= src[1];
     dst[2] -= src[2];
-}
+}*/
 
 void object_pos_to_vec3f(Vec3f dst, struct Object *o) {
     dst[0] = o->oPosX;
@@ -7083,7 +7087,7 @@ static UNUSED void unused_cutscene_mario_dialog_looking_up(UNUSED struct Camera 
  */
 BAD_RETURN(s32) cutscene_intro_peach_start_letter_music(UNUSED struct Camera *c) {
 #if defined(VERSION_US) || defined(VERSION_SH)
-    func_8031FFB4(SEQ_PLAYER_LEVEL, 60, 40);
+    seq_player_lower_volume(SEQ_PLAYER_LEVEL, 60, 40);
 #endif
     cutscene_intro_peach_play_message_music();
 }
@@ -7104,7 +7108,7 @@ BAD_RETURN(s32) cutscene_intro_peach_start_flying_music(UNUSED struct Camera *c)
  * starts.
  */
 BAD_RETURN(s32) cutscene_intro_peach_eu_lower_volume(UNUSED struct Camera *c) {
-    func_8031FFB4(SEQ_PLAYER_LEVEL, 60, 40);
+    seq_player_lower_volume(SEQ_PLAYER_LEVEL, 60, 40);
 }
 #endif
 
@@ -7257,7 +7261,7 @@ void set_flag_post_door(struct Camera *c) {
 }
 
 void cutscene_soften_music(UNUSED struct Camera *c) {
-    func_8031FFB4(SEQ_PLAYER_LEVEL, 60, 40);
+    seq_player_lower_volume(SEQ_PLAYER_LEVEL, 60, 40);
 }
 
 void cutscene_unsoften_music(UNUSED struct Camera *c) {
@@ -11489,6 +11493,7 @@ void set_fov_bbh(struct MarioState *m) {
     sFOVState.fov = approach_f32(sFOVState.fov, targetFoV, 2.f, 2.f);
 }
 
+#include "practice.h"
 /**
  * Sets the field of view for the GraphNodeCamera
  */
@@ -11496,6 +11501,8 @@ Gfx *geo_camera_fov(s32 callContext, struct GraphNode *g, UNUSED void *context) 
     struct GraphNodePerspective *perspective = (struct GraphNodePerspective *) g;
     struct MarioState *marioState = &gMarioStates[0];
     u8 fovFunc = sFOVState.fovFunc;
+	if (gRenderPracticeMenu||gFrameAdvance)
+		return NULL;
 
     if (callContext == GEO_CONTEXT_RENDER) {
         switch (fovFunc) {

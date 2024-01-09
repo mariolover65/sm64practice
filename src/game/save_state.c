@@ -17,17 +17,20 @@
 
 #include <string.h>
 #include <stdio.h>
+#include <assert.h>
 
 u8 gHasStateSaved = FALSE;
-SaveState gCurrSaveState;
-Replay* gSaveStateReplay;
+SaveStateList* gCurrSaveStateSlot;
+SaveStateList* gCurrLoadStateSlot;
+u32 gCurrSaveStateIndex = 0;
+u32 gCurrLoadStateIndex = 0;
+
+SaveStateList* sSaveStateSlotsHead = NULL;
 
 extern s32 gPracticeSubStatus;
-
 extern struct Object *gMarioPlatform;
-
 extern s32 sBubbleParticleCount;
-
+extern s16 gSparklePhase;
 extern struct PlayerGeometry sMarioGeometry;
 extern struct CameraFOVStatus sFOVState;
 extern struct ModeTransitionInfo sModeInfo;
@@ -42,6 +45,11 @@ extern s16 sAvoidYawVel;
 extern s16 sYawSpeed;
 extern s16 sCameraYawAfterDoorCutscene;
 extern u32 gCutsceneObjSpawn;
+extern struct HandheldShakePoint sHandheldShakeSpline[4];
+
+extern s16 sHandheldShakePitch;
+extern s16 sHandheldShakeYaw;
+extern s16 sHandheldShakeRoll;
 
 extern u32 sParTrackIndex;
 
@@ -61,6 +69,8 @@ extern s16 sSpiralStairsYawOffset;
 extern s32 gCurrLevelArea;
 extern u32 gPrevLevel;
 
+extern s16 sSwimStrength;
+
 extern f32 gCameraZoomDist;
 
 extern struct ParallelTrackingPoint* sParTrackPath;
@@ -68,6 +78,7 @@ extern struct CutsceneVariable sCutsceneVars[10];
 extern struct CameraStoredInfo sParTrackTransOff;
 extern struct CameraStoredInfo sCameraStoreCUp;
 extern struct CameraStoredInfo sCameraStoreCutscene;
+extern s16 sBehindMarioSoundTimer;
 
 extern s8 sWarpCheckpointIsActive;
 extern s16 gWarpTransDelay;
@@ -119,10 +130,106 @@ void init_state(SaveState* state){
 	for (u32 i=0;i<8;++i){
 		state->objState.areaData.macroData[i].data = NULL;
 		state->objState.areaData.respawnData[i].data = NULL;
+		state->objState.areaData.warpData[i].data = NULL;
 	}
 	
 	state->replayState = NULL;
 	state->levelState.envBuffer = NULL;
+}
+
+SaveState* alloc_state(void){
+	SaveState* state = (SaveState*)malloc(sizeof(SaveState));
+	init_state(state);
+	return state;
+}
+
+void free_state(SaveState* state){
+	if (state->levelState.envBuffer!=NULL)
+		free(state->levelState.envBuffer);
+	
+	for (u32 i=0;i<8;++i){
+		if (state->objState.areaData.macroData[i].data)
+			free(state->objState.areaData.macroData[i].data);
+		if (state->objState.areaData.respawnData[i].data)
+			free(state->objState.areaData.respawnData[i].data);
+		if (state->objState.areaData.warpData[i].data)
+			free(state->objState.areaData.warpData[i].data);
+	}
+	
+	if (state->replayState!=NULL)
+		free_replay(state->replayState);
+	
+	free(state);
+}
+
+void alloc_state_at_save_slot(void){
+	if (gCurrSaveStateSlot->state)
+		free_state(gCurrSaveStateSlot->state);
+	gCurrSaveStateSlot->state = alloc_state();
+}
+
+SaveStateList* alloc_list_slot(SaveStateList* prev){
+	SaveStateList* s = (SaveStateList*)malloc(sizeof(SaveStateList));
+	s->next = NULL;
+	s->prev = prev;
+	s->state = NULL;
+	return s;
+}
+
+void init_state_list(void){
+	sSaveStateSlotsHead = alloc_list_slot(NULL);
+	gCurrSaveStateSlot = sSaveStateSlotsHead;
+	gCurrSaveStateIndex = 0;
+	gCurrLoadStateSlot = sSaveStateSlotsHead;
+	gCurrLoadStateIndex = 0;
+}
+
+void free_state_list(void){
+	SaveStateList* curr = sSaveStateSlotsHead;
+	SaveStateList* next;
+	while (curr){
+		next = curr->next;
+		if (curr->state){
+			free_state(curr->state);
+		}
+		free(curr);
+		curr = next;
+	}
+}
+
+void clear_save_states(void){
+	free_state_list();
+	init_state_list();
+}
+
+void save_slot_increment(void){
+	if (gCurrSaveStateSlot->next==NULL){
+		gCurrSaveStateSlot->next = alloc_list_slot(gCurrSaveStateSlot);
+	}
+	gCurrSaveStateSlot = gCurrSaveStateSlot->next;
+	++gCurrSaveStateIndex;
+}
+
+void save_slot_decrement(void){
+	if (gCurrSaveStateSlot->prev){
+		gCurrSaveStateSlot = gCurrSaveStateSlot->prev;
+		--gCurrSaveStateIndex;
+	}
+}
+
+void load_slot_increment(void){
+	if (gCurrLoadStateSlot->next==NULL){
+		gCurrLoadStateSlot->next = alloc_list_slot(gCurrLoadStateSlot);
+	}
+	gCurrLoadStateSlot = gCurrLoadStateSlot->next;
+	++gCurrLoadStateIndex;
+}
+
+void load_slot_decrement(void){
+	if (gCurrLoadStateSlot->prev){
+		gCurrLoadStateSlot = gCurrLoadStateSlot->prev;
+		--gCurrLoadStateIndex;
+	}
 }
 
 void save_env_buffer(LevelState* levelState){
@@ -168,11 +275,13 @@ void load_env_buffer(const LevelState* levelState){
 void save_macro_objects(MacroObjectData* macroData,const s16* data){
 	if (macroData->data!=NULL){
 		free(macroData->data);
+		macroData->data = NULL;
 	}
 	
 	s32 l = 0;
 	s32 presetID;
 	const s16* node = data;
+	// get length
 	while (*node!=-1){
 		presetID = (*node & 0x1FF) - 31;
         if (presetID < 0) {
@@ -187,7 +296,7 @@ void save_macro_objects(MacroObjectData* macroData,const s16* data){
 	macroData->data = malloc(sizeof(s16)*l);
 	l = 0;
 	node = data;
-	
+	// save data
 	while (*node!=-1){
 		presetID = (*node & 0x1FF) - 31;
 		if (presetID < 0) {
@@ -203,6 +312,7 @@ void save_macro_objects(MacroObjectData* macroData,const s16* data){
 void save_respawn_info(RespawnInfoData* respawnData,const struct SpawnInfo* spawnInfos){
 	if (respawnData->data!=NULL){
 		free(respawnData->data);
+		respawnData->data = NULL;
 	}
 	s32 l = 0;
 	const struct SpawnInfo* node = spawnInfos;
@@ -223,9 +333,45 @@ void save_respawn_info(RespawnInfoData* respawnData,const struct SpawnInfo* spaw
 	}
 }
 
+void save_warp_objects(WarpObjectData* warpData,struct ObjectWarpNode* warpNodes){
+	struct ObjectWarpNode* it = warpNodes;
+	u32 l = 0;
+	while (it){
+		++l;
+		it = it->next;
+	}
+	
+	warpData->length = l;
+	warpData->data = malloc(l*sizeof(struct Object*));
+	
+	it = warpNodes;
+	l = 0;
+	while (it){
+		warpData->data[l++] = it->object;
+		it = it->next;
+	}
+}
+
 void save_area_data(AreaData* areaData){
 	areaData->macroMask = 0;
 	areaData->respawnMask = 0;
+	areaData->warpMask = 0;
+	for (u32 i=0;i<8;++i){
+		if (areaData->macroData[i].data){
+			free(areaData->macroData[i].data);
+			areaData->macroData[i].data = NULL;
+		}
+		
+		if (areaData->respawnData[i].data){
+			free(areaData->respawnData[i].data);
+			areaData->respawnData[i].data = NULL;
+		}
+		
+		if (areaData->warpData[i].data){
+			free(areaData->warpData[i].data);
+			areaData->warpData[i].data = NULL;
+		}
+	}
 	
 	for (u32 i=0;i<8;++i){
 		if (gAreaData[i].macroObjects!=NULL){
@@ -235,6 +381,10 @@ void save_area_data(AreaData* areaData){
 		if (gAreaData[i].objectSpawnInfos!=NULL){
 			areaData->respawnMask |= (1<<i);
 			save_respawn_info(&areaData->respawnData[i],gAreaData[i].objectSpawnInfos);
+		}
+		if (gAreaData[i].warpNodes!=NULL){
+			areaData->warpMask |= (1<<i);
+			save_warp_objects(&areaData->warpData[i],gAreaData[i].warpNodes);
 		}
 	}
 }
@@ -247,12 +397,22 @@ void load_macro_objects(const MacroObjectData* macroData,s16* data){
 
 void load_respawn_info(const RespawnInfoData* respawnData,struct SpawnInfo* spawnInfos){
 	for (u32 i=0;i<respawnData->length;++i){
-		if (spawnInfos==NULL){
+		assert(spawnInfos!=NULL);
+		/*if (spawnInfos==NULL){
 			printf("%d/%d\n",i,respawnData->length);
 			break;
-		}
+		}*/
 		spawnInfos->behaviorArg = respawnData->data[i];
 		spawnInfos = spawnInfos->next;
+	}
+}
+
+void load_warp_data(const WarpObjectData* warpData,struct ObjectWarpNode* warpNodes){
+	for (u32 i=0;i<warpData->length;++i){
+		assert(warpNodes!=NULL);
+		
+		warpNodes->object = warpData->data[i];
+		warpNodes = warpNodes->next;
 	}
 }
 
@@ -260,10 +420,12 @@ void load_area_data(const AreaData* areaData){
 	for (u32 i=0;i<8;++i){
 		if (areaData->macroMask&(1<<i)){
 			load_macro_objects(&areaData->macroData[i],gAreaData[i].macroObjects);
-			
 		}
 		if (areaData->respawnMask&(1<<i)){
 			load_respawn_info(&areaData->respawnData[i],gAreaData[i].objectSpawnInfos);
+		}
+		if (areaData->warpMask&(1<<i)){
+			load_warp_data(&areaData->warpData[i],gAreaData[i].warpNodes);
 		}
 	}
 }
@@ -291,6 +453,7 @@ void save_camera_state(CameraState* camState){
 	}
 	
 	memcpy(&camState->cutsceneVars[0],&sCutsceneVars[0],sizeof(struct CutsceneVariable)*10);
+	memcpy(camState->handheldShakeSpline,sHandheldShakeSpline,sizeof(sHandheldShakeSpline));
 	
 	camState->lakituState = gLakituState;
 	camState->playerCam = gPlayerCameraState[0];
@@ -306,6 +469,9 @@ void save_camera_state(CameraState* camState){
 	camState->cSideButtonYaw = sCSideButtonYaw;
 	camState->mode8BaseYaw = s8DirModeBaseYaw;
 	camState->mode8YawOffset = s8DirModeYawOffset;
+	camState->handheldShakePitch = sHandheldShakePitch;
+	camState->handheldShakeYaw = sHandheldShakeYaw;
+	camState->handheldShakeRoll = sHandheldShakeRoll;
 	camState->areaYaw = sAreaYaw;
 	camState->areaYawChange = sAreaYawChange;
 	camState->yawSpeed = sYawSpeed;
@@ -317,6 +483,7 @@ void save_camera_state(CameraState* camState){
 	camState->lakituDist = sLakituDist;
 	camState->lakituPitch = sLakituPitch;
 	camState->camStatusFlags = sStatusFlags;
+	camState->horizCamHold = sBehindMarioSoundTimer;
 	camState->panDist = sPanDistance;
 	camState->cannonYOffset = sCannonYOffset;
 	camState->zoomDist = gCameraZoomDist;
@@ -358,12 +525,14 @@ void save_level_state(LevelState* levelState){
 	levelState->delayedWarpArg = sDelayedWarpArg;
 	levelState->warpTransition = gWarpTransition;
 	levelState->warpCheckpoint = gWarpCheckpoint;
+	levelState->lastLevelNum = gLastLevelNum;
 	
 	levelState->areaUpdateCounter = gAreaUpdateCounter;
 	
 	levelState->nonstop = configNonstop;
 	levelState->currSaveFileNum = gCurrSaveFileNum;
-	levelState->saveBuffer = gSaveBuffer;
+	levelState->saveFile = gSaveBuffer.files[gCurrSaveFileNum-1][0];
+	levelState->soundMode = gSaveBuffer.menuData[0].soundMode;
 	levelState->globalTimer = gGlobalTimer;
 	levelState->lastCompletedCourseNum = gLastCompletedCourseNum;
 	levelState->lastCompletedStarNum = gLastCompletedStarNum;
@@ -426,6 +595,11 @@ void save_level_state(LevelState* levelState){
 	levelState->wdwWaterLevelChanging = gWDWWaterLevelChanging;
 	levelState->wdwWaterLevelSet = gWdwWaterLevelSet;
 	
+	levelState->aPressCount = gAPressCounter;
+	
+	levelState->sparklePhase = gSparklePhase;
+	levelState->swimStrength = sSwimStrength;
+	
 	save_env_buffer(levelState);
 	
 	levelState->envLevels[0] = gEnvironmentLevels[0];
@@ -438,6 +612,14 @@ void save_level_state(LevelState* levelState){
 	}
 }
 
+void save_game_init_state(GameInitState* state){
+	state->introSkip = configSkipIntro;
+	state->introSkipTiming = configIntroSkipTiming;
+	state->nonstop = configNonstop;
+	state->noInvisibleWalls = configNoInvisibleWalls;
+	state->stageText = configStageText;
+}
+
 void save_level_init_state(LevelInitState* initState,struct WarpDest* warpSave){
 	if (warpSave!=NULL){
 		initState->loc = *warpSave;
@@ -448,9 +630,10 @@ void save_level_init_state(LevelInitState* initState,struct WarpDest* warpSave){
 		initState->loc.nodeId = 0xA;
 		initState->loc.arg = 0;
 	}
-	
+	memcpy(initState->handheldShakeSpline,sHandheldShakeSpline,sizeof(sHandheldShakeSpline));
 	initState->currSaveFileNum = gCurrSaveFileNum;
-	initState->saveBuffer = gSaveBuffer;
+	initState->saveFile = gSaveBuffer.files[gCurrSaveFileNum-1][0];
+	initState->soundMode = gSaveBuffer.menuData[0].soundMode;
 	initState->globalTimer = gGlobalTimer;
 	initState->lastCompletedCourseNum = gLastCompletedCourseNum;
 	initState->lastCompletedStarNum = gLastCompletedStarNum;
@@ -470,6 +653,7 @@ void save_level_init_state(LevelInitState* initState,struct WarpDest* warpSave){
 	
 	initState->practiceSubStatus = gPracticeSubStatus;
 	initState->practiceStageText = configStageText;
+	initState->lastLevelNum = gLastLevelNum;
 	
 	initState->lastButtons = gLastButtons;
 	
@@ -481,6 +665,24 @@ void save_level_init_state(LevelInitState* initState,struct WarpDest* warpSave){
 	initState->numStars = gMarioStates[0].numStars;
 	initState->numLives = gMarioStates[0].numLives;
 	initState->health = gMarioStates[0].health;
+	
+	switch (gWarpCheckpoint.courseNum){
+		case COURSE_NONE:
+			initState->warpCheckpointType = WARP_CHECKPOINT_STATE_NONE;
+			break;
+		case COURSE_LLL:
+			initState->warpCheckpointType = WARP_CHECKPOINT_STATE_LLL;
+			break;
+		case COURSE_SSL:
+			initState->warpCheckpointType = WARP_CHECKPOINT_STATE_SSL;
+			break;
+		case COURSE_TTM:
+			initState->warpCheckpointType = WARP_CHECKPOINT_STATE_TTM;
+			break;
+		default:
+			assert(FALSE);
+			break;
+	}
 	
 	initState->holp[0] = gBodyStates[0].heldObjLastPosition[0];
 	initState->holp[1] = gBodyStates[0].heldObjLastPosition[1];
@@ -495,10 +697,18 @@ void save_level_init_state(LevelInitState* initState,struct WarpDest* warpSave){
 		initState->envRegionHeights[2] = gEnvironmentRegions[18];
 	}
 	
+	initState->swimStrength = sSwimStrength;
+	
+	// slide yaw not needed?
 	initState->slideYaw = gMarioStates[0].slideYaw;
 	initState->twirlYaw = gMarioStates[0].twirlYaw;
 	initState->slideVelX = gMarioStates[0].slideVelX;
 	initState->slideVelZ = gMarioStates[0].slideVelZ;
+	
+	initState->sparklePhase = gSparklePhase;
+	
+	initState->menuHoldKeyIndex = gMenuHoldKeyIndex;
+	initState->menuHoldKeyTimer = gMenuHoldKeyTimer;
 }
 
 void save_dialog_state(DialogState* dialogState){
@@ -545,6 +755,12 @@ void save_practice_state(PracticeState* practiceState){
 	practiceState->lastWarpDest = gLastWarpDest;
 	practiceState->sectionTimer = gSectionTimer;
 	practiceState->sectionTimerResult = gSectionTimerResult;
+	
+	practiceState->ghostFrame = gCurrGhostFrame;
+	practiceState->ghostArea = gCurrGhostArea;
+	practiceState->ghostAreaCounter = gGhostAreaCounter;
+	practiceState->ghostIndex = gGhostDataIndex;
+	
 	practiceState->practiceSubStatus = gPracticeSubStatus;
 	practiceState->practiceStageText = configStageText;
 	practiceState->introSkip = configSkipIntro;
@@ -615,6 +831,7 @@ void load_camera_state(const CameraState* camState){
 	}
 	
 	memcpy(&sCutsceneVars[0],&camState->cutsceneVars[0],sizeof(struct CutsceneVariable)*10);
+	memcpy(sHandheldShakeSpline,camState->handheldShakeSpline,sizeof(sHandheldShakeSpline));
 	
 	gLakituState = camState->lakituState;
 	gPlayerCameraState[0] = camState->playerCam;
@@ -630,6 +847,9 @@ void load_camera_state(const CameraState* camState){
 	s8DirModeBaseYaw = camState->mode8BaseYaw;
 	s8DirModeYawOffset = camState->mode8YawOffset;
 	sCSideButtonYaw = camState->cSideButtonYaw;
+	sHandheldShakePitch = camState->handheldShakePitch;
+	sHandheldShakeYaw = camState->handheldShakeYaw;
+	sHandheldShakeRoll = camState->handheldShakeRoll;
 	sAreaYaw = camState->areaYaw;
 	sAreaYawChange = camState->areaYawChange;
 	sYawSpeed = camState->yawSpeed;
@@ -641,6 +861,7 @@ void load_camera_state(const CameraState* camState){
 	sLakituDist = camState->lakituDist;
 	sLakituPitch = camState->lakituPitch;
 	sStatusFlags = camState->camStatusFlags;
+	sBehindMarioSoundTimer = camState->horizCamHold;
 	sPanDistance = camState->panDist;
 	sCannonYOffset = camState->cannonYOffset;
 	gCameraZoomDist = camState->zoomDist;
@@ -674,12 +895,15 @@ void load_level_state(const LevelState* levelState){
 	sDelayedWarpArg = levelState->delayedWarpArg;
 	gWarpTransition = levelState->warpTransition;
 	gWarpCheckpoint = levelState->warpCheckpoint;
+	gLastLevelNum = levelState->lastLevelNum;
 	
 	gAreaUpdateCounter = levelState->areaUpdateCounter;
 	
 	configNonstop = levelState->nonstop;
 	gCurrSaveFileNum = levelState->currSaveFileNum;
-	gSaveBuffer = levelState->saveBuffer;
+	gSaveBuffer.files[gCurrSaveFileNum-1][0] = levelState->saveFile;
+	gSaveBuffer.menuData[0].soundMode = levelState->soundMode;
+	
 	gGlobalTimer = levelState->globalTimer;
 	gLastCompletedCourseNum = levelState->lastCompletedCourseNum;
 	gLastCompletedStarNum = levelState->lastCompletedStarNum;
@@ -746,6 +970,11 @@ void load_level_state(const LevelState* levelState){
 	gWDWWaterLevelChanging = levelState->wdwWaterLevelChanging;
 	gWdwWaterLevelSet = levelState->wdwWaterLevelSet;
 	
+	gAPressCounter = levelState->aPressCount;
+	
+	gSparklePhase = levelState->sparklePhase;
+	sSwimStrength = levelState->swimStrength;
+	
 	gEnvironmentLevels[0] = levelState->envLevels[0];
 	gEnvironmentLevels[2] = levelState->envLevels[1];
 	
@@ -758,11 +987,24 @@ void load_level_state(const LevelState* levelState){
 	}
 }
 
+void load_game_init_state(const GameInitState* state){
+	configSkipIntro = state->introSkip;
+	configIntroSkipTiming = state->introSkipTiming;
+	configNonstop = state->nonstop;
+	configNoInvisibleWalls = state->noInvisibleWalls;
+	configStageText = state->stageText;
+	
+	gPracticeSubStatus = PRACTICE_OP_DEFAULT;
+	configYellowStars = FALSE;
+}
+
 void load_level_init_state(const LevelInitState* initState){
 	gHudFlash = FALSE;
 	
+	memcpy(sHandheldShakeSpline,initState->handheldShakeSpline,sizeof(sHandheldShakeSpline));
 	gCurrSaveFileNum = initState->currSaveFileNum;
-	gSaveBuffer = initState->saveBuffer;
+	gSaveBuffer.files[gCurrSaveFileNum-1][0] = initState->saveFile;
+	gSaveBuffer.menuData[0].soundMode = initState->soundMode;
 	gGlobalTimer = initState->globalTimer;
 	gLastButtons = initState->lastButtons;
 	gLastCompletedCourseNum = initState->lastCompletedCourseNum;
@@ -781,6 +1023,8 @@ void load_level_init_state(const LevelInitState* initState){
 	sPssSlideStarted = initState->pssSlideStarted;
 	gDddPaintingStatus = initState->dddPaintingStatus;
 	
+	gLastLevelNum = initState->lastLevelNum;
+	
 	gPracticeSubStatus = initState->practiceSubStatus;
 	configStageText = initState->practiceStageText;
 	
@@ -792,6 +1036,37 @@ void load_level_init_state(const LevelInitState* initState){
 	gMarioStates[0].numStars = initState->numStars;
 	gMarioStates[0].numLives = initState->numLives;
 	gMarioStates[0].health = initState->health;
+	
+	switch (initState->warpCheckpointType){
+		case WARP_CHECKPOINT_STATE_NONE:
+			gWarpCheckpoint.actNum = 1;
+			gWarpCheckpoint.courseNum = COURSE_NONE;
+			break;
+		case WARP_CHECKPOINT_STATE_LLL:
+			gWarpCheckpoint.actNum = 1;
+			gWarpCheckpoint.courseNum = COURSE_LLL;
+			gWarpCheckpoint.levelID = 22;
+			gWarpCheckpoint.areaNum = 2;
+			gWarpCheckpoint.warpNode = 0xA;
+			break;
+		case WARP_CHECKPOINT_STATE_SSL:
+			gWarpCheckpoint.actNum = 1;
+			gWarpCheckpoint.courseNum = COURSE_SSL;
+			gWarpCheckpoint.levelID = 8;
+			gWarpCheckpoint.areaNum = 2;
+			gWarpCheckpoint.warpNode = 0xA;
+			break;
+		case WARP_CHECKPOINT_STATE_TTM:
+			gWarpCheckpoint.actNum = 1;
+			gWarpCheckpoint.courseNum = COURSE_TTM;
+			gWarpCheckpoint.levelID = 36;
+			gWarpCheckpoint.areaNum = 2;
+			gWarpCheckpoint.warpNode = 0xA;
+			break;
+		default:
+			assert(FALSE);
+			break;
+	}
 	
 	// reset dialog star counter
 	gMarioStates[0].prevNumStarsForDialog = gMarioStates[0].numStars;
@@ -806,7 +1081,15 @@ void load_level_init_state(const LevelInitState* initState){
 	gMarioStates[0].slideVelZ = initState->slideVelZ;
 	
 	gEnvironmentLevels[0] = initState->envLevels[0];
-	gEnvironmentLevels[2] = initState->envLevels[1];	
+	gEnvironmentLevels[2] = initState->envLevels[1];
+	
+	sSwimStrength = initState->swimStrength;
+	gSparklePhase = initState->sparklePhase;
+	
+	gMenuHoldKeyIndex = initState->menuHoldKeyIndex;
+	gMenuHoldKeyTimer = initState->menuHoldKeyTimer;
+	
+	update_save_file_vars();
 }
 
 void load_post_level_init_state(const LevelInitState* initState){
@@ -875,8 +1158,6 @@ static void apply_sound_flags(const SoundState* state){
 		enable_background_sound();
 	}
 	
-	
-	
 	//if (sCurrentMusic!=state->musicParam2){
 	//	set_background_music(state->musicParam1, state->musicParam2, 0);
 	//}
@@ -909,14 +1190,25 @@ void load_sound_state(const SoundState* soundState){
 	}
 	
 	apply_sound_flags(soundState);
-	
-	
 }
 
 void load_practice_state(const PracticeState* practiceState){
 	gLastWarpDest = practiceState->lastWarpDest;
 	gSectionTimer = practiceState->sectionTimer;
 	gSectionTimerResult = practiceState->sectionTimerResult;
+	
+	if (gCurrGhostData&&gGhostDataIndex==practiceState->ghostIndex){
+		gCurrGhostFrame = practiceState->ghostFrame;
+		gCurrGhostArea = practiceState->ghostArea;
+		gGhostAreaCounter = practiceState->ghostAreaCounter;
+	} else if (gCurrGhostData){
+		//ghost_data_free(gCurrGhostData);
+		//gCurrGhostData = NULL;
+		gCurrGhostFrame = NULL;
+		gCurrGhostArea = NULL;
+		gGhostAreaCounter = 0;
+	}
+	
 	gPracticeSubStatus = practiceState->practiceSubStatus;
 	configStageText = practiceState->practiceStageText;
 	configSkipIntro = practiceState->introSkip;
@@ -932,7 +1224,8 @@ void load_state(const SaveState* state){
 	
 	if (state->replayState!=NULL){
 		if (gPracticeRecordingReplay!=NULL){
-			free_replay(gPracticeRecordingReplay);
+			gPracticeRecordingReplay->flags |= REPLAY_FLAG_RESET;
+			archive_replay(gPracticeRecordingReplay);
 		}
 		gPracticeRecordingReplay = copy_replay(state->replayState,NULL,0);
 		gPracticeRecordingReplay->flags |= REPLAY_FLAG_SAVE_STATED;
@@ -1001,10 +1294,13 @@ void serialize_level_init_state(FILE* file,const LevelInitState* initState){
 	
 	SERIALIZE_VAR(initState->globalTimer);
 	
-	for (u32 i=0;i<4;++i){
-		SERIALIZE_VAR(initState->saveBuffer.files[i][0]);
-	}
-	SERIALIZE_VAR(initState->saveBuffer.menuData[0].soundMode);
+	SERIALIZE_VAR(initState->saveFile);
+	SERIALIZE_VAR(initState->soundMode);
+	
+	SERIALIZE_VAR(initState->handheldShakeSpline[0]);
+	SERIALIZE_VAR(initState->handheldShakeSpline[1]);
+	SERIALIZE_VAR(initState->handheldShakeSpline[2]);
+	SERIALIZE_VAR(initState->handheldShakeSpline[3]);
 	
 	SERIALIZE_VAR(initState->holp[0]);
 	SERIALIZE_VAR(initState->holp[1]);
@@ -1029,12 +1325,16 @@ void serialize_level_init_state(FILE* file,const LevelInitState* initState){
 	SERIALIZE_VAR(initState->practiceStageText);
 	SERIALIZE_VAR(initState->nonstop);
 	SERIALIZE_VAR(initState->introSkip);
+	
+	SERIALIZE_VAR(initState->lastLevelNum);
+	
 	SERIALIZE_VAR(initState->randState);
 	SERIALIZE_VAR(initState->randCalls);
 	SERIALIZE_VAR(initState->numStars);
 	SERIALIZE_VAR(initState->camSelectionFlags);
 	SERIALIZE_VAR(initState->numLives);
 	SERIALIZE_VAR(initState->health);
+	SERIALIZE_VAR(initState->warpCheckpointType);
 	SERIALIZE_VAR(initState->envLevels[0]);
 	SERIALIZE_VAR(initState->envLevels[1]);
 	
@@ -1042,10 +1342,16 @@ void serialize_level_init_state(FILE* file,const LevelInitState* initState){
 	SERIALIZE_VAR(initState->envRegionHeights[1]);
 	SERIALIZE_VAR(initState->envRegionHeights[2]);
 	
+	SERIALIZE_VAR(initState->swimStrength);
+	SERIALIZE_VAR(initState->sparklePhase);
+	
 	SERIALIZE_VAR(initState->slideYaw);
 	SERIALIZE_VAR(initState->twirlYaw);
 	SERIALIZE_VAR(initState->slideVelX);
 	SERIALIZE_VAR(initState->slideVelZ);
+	
+	SERIALIZE_VAR(initState->menuHoldKeyIndex);
+	SERIALIZE_VAR(initState->menuHoldKeyTimer);
 }
 
 u8 deserialize_level_init_state(FILE* file,LevelInitState* initState){
@@ -1056,10 +1362,13 @@ u8 deserialize_level_init_state(FILE* file,LevelInitState* initState){
 	
 	DESERIALIZE_VAR(initState->globalTimer);
 	
-	for (u32 i=0;i<4;++i){
-		DESERIALIZE_VAR(initState->saveBuffer.files[i][0]);
-	}
-	DESERIALIZE_VAR(initState->saveBuffer.menuData[0].soundMode);
+	DESERIALIZE_VAR(initState->saveFile);
+	DESERIALIZE_VAR(initState->soundMode);
+	
+	DESERIALIZE_VAR(initState->handheldShakeSpline[0]);
+	DESERIALIZE_VAR(initState->handheldShakeSpline[1]);
+	DESERIALIZE_VAR(initState->handheldShakeSpline[2]);
+	DESERIALIZE_VAR(initState->handheldShakeSpline[3]);
 	
 	DESERIALIZE_VAR(initState->holp[0]);
 	DESERIALIZE_VAR(initState->holp[1]);
@@ -1086,12 +1395,16 @@ u8 deserialize_level_init_state(FILE* file,LevelInitState* initState){
 	DESERIALIZE_VAR(initState->practiceStageText);
 	DESERIALIZE_VAR(initState->nonstop);
 	DESERIALIZE_VAR(initState->introSkip);
+	
+	DESERIALIZE_VAR(initState->lastLevelNum);
+	
 	DESERIALIZE_VAR(initState->randState);
 	DESERIALIZE_VAR(initState->randCalls);
 	DESERIALIZE_VAR(initState->numStars);
 	DESERIALIZE_VAR(initState->camSelectionFlags);
 	DESERIALIZE_VAR(initState->numLives);
 	DESERIALIZE_VAR(initState->health);
+	DESERIALIZE_VAR(initState->warpCheckpointType);
 	DESERIALIZE_VAR(initState->envLevels[0]);
 	DESERIALIZE_VAR(initState->envLevels[1]);
 	
@@ -1099,10 +1412,33 @@ u8 deserialize_level_init_state(FILE* file,LevelInitState* initState){
 	DESERIALIZE_VAR(initState->envRegionHeights[1]);
 	DESERIALIZE_VAR(initState->envRegionHeights[2]);
 	
+	DESERIALIZE_VAR(initState->swimStrength);
+	DESERIALIZE_VAR(initState->sparklePhase);
+	
 	DESERIALIZE_VAR(initState->slideYaw);
 	DESERIALIZE_VAR(initState->twirlYaw);
 	DESERIALIZE_VAR(initState->slideVelX);
 	DESERIALIZE_VAR(initState->slideVelZ);
 	
+	DESERIALIZE_VAR(initState->menuHoldKeyIndex);
+	DESERIALIZE_VAR(initState->menuHoldKeyTimer);
+	
+	return TRUE;
+}
+
+void serialize_game_init_state(FILE* file,const GameInitState* state){
+	SERIALIZE_VAR(state->introSkip);
+	SERIALIZE_VAR(state->introSkipTiming);
+	SERIALIZE_VAR(state->nonstop);
+	SERIALIZE_VAR(state->noInvisibleWalls);
+	SERIALIZE_VAR(state->stageText);
+}
+
+u8 deserialize_game_init_state(FILE* file,GameInitState* state){
+	DESERIALIZE_VAR(state->introSkip);
+	DESERIALIZE_VAR(state->introSkipTiming);
+	DESERIALIZE_VAR(state->nonstop);
+	DESERIALIZE_VAR(state->noInvisibleWalls);
+	DESERIALIZE_VAR(state->stageText);
 	return TRUE;
 }

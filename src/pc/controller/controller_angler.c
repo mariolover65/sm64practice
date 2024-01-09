@@ -220,8 +220,8 @@ static void update_angles(void) {
 	}
 	
 	if (angler_keys_array[ANGLER_SPACE_SCANCODE]){
-		accX *= 0.32f;
-		accY *= 0.32f;
+		accX *= 0.43f;
+		accY *= 0.43f;
 	}
 	if (angler_keys_array[ANGLER_NP_DOT_SCANCODE]){
 		accX *= 0.1f;
@@ -232,10 +232,10 @@ static void update_angles(void) {
 static void update_buttons(void) {
 	angler_buttons = 0;
 	
-	if (angler_keys_array[ANGLER_NP_3_SCANCODE]||angler_keys_array[ANGLER_NP_1_SCANCODE]){
+	if (angler_keys_array[ANGLER_NP_3_SCANCODE]){
 		angler_buttons |= A_BUTTON;
 	}
-	if (angler_keys_array[ANGLER_NP_2_SCANCODE]||angler_keys_array[ANGLER_LCTRL_SCANCODE]||angler_keys_array[ANGLER_TAB_SCANCODE]){
+	if (angler_keys_array[ANGLER_NP_2_SCANCODE]||angler_keys_array[ANGLER_LCTRL_SCANCODE]||angler_keys_array[ANGLER_TAB_SCANCODE]||angler_keys_array[ANGLER_NP_1_SCANCODE]){
 		angler_buttons |= B_BUTTON;
 	}
 	if (angler_keys_array[ANGLER_NP_ENTER_SCANCODE]){
@@ -253,7 +253,7 @@ static void update_buttons(void) {
 	if (angler_keys_array[ANGLER_NP_8_SCANCODE]){
 		angler_buttons |= U_CBUTTONS;
 	}
-	if (angler_keys_array[ANGLER_NP_9_SCANCODE]){
+	if (angler_keys_array[ANGLER_NP_PLUS_SCANCODE]){
 		angler_buttons |= R_TRIG;
 	}
 	if (angler_keys_array[ANGLER_NP_7_SCANCODE]){
@@ -285,8 +285,10 @@ static void angler_read(OSContPad *pad) {
 	const s8 xstick = (s8)(accX*127.0f);
 	const s8 ystick = (s8)(accY*127.0f);
 	
-	pad->stick_x = xstick;
-	pad->stick_y = ystick;
+	if (xstick)
+		pad->stick_x = xstick;
+	if (ystick)
+		pad->stick_y = ystick;
 }
 
 

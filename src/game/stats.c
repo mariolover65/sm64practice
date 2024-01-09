@@ -3,6 +3,7 @@
 #include "stats.h"
 #include "practice.h"
 #include "area.h"
+#include "game_init.h"
 #include "pc/fs/fs.h"
 
 #include <stdio.h>
@@ -23,6 +24,7 @@ static LevelStats* make_level_stats(u8 level,u8 area){
 	stats->areaIdx = area;
 	stats->next = NULL;
 	
+	stats->distanceMoved = 0.0;
 	stats->timePracticing = 0;
 	stats->starGrabCount = 0;
 	stats->coinCount = 0;
@@ -60,6 +62,8 @@ static void stats_serialize_level_stats(FILE* file,const LevelStats* levelStats)
 	}
 	
 	SERIALIZE_VAR(time);
+	//f64 dist = 0.0;
+	SERIALIZE_VAR(levelStats->distanceMoved);
 	SERIALIZE_VAR(levelStats->starGrabCount);
 	SERIALIZE_VAR(levelStats->coinCount);
 	SERIALIZE_VAR(levelStats->levelResetCount);
@@ -69,6 +73,7 @@ static void stats_deserialize_level_stats(FILE* file,LevelStats* levelStats){
 	DESERIALIZE_VAR(levelStats->levelNum);
 	DESERIALIZE_VAR(levelStats->areaIdx);
 	DESERIALIZE_VAR(levelStats->timePracticing);
+	DESERIALIZE_VAR(levelStats->distanceMoved);
 	DESERIALIZE_VAR(levelStats->starGrabCount);
 	DESERIALIZE_VAR(levelStats->coinCount);
 	DESERIALIZE_VAR(levelStats->levelResetCount);
@@ -212,7 +217,7 @@ static LevelStats* get_or_make_curr_level_stats(void){
 
 static LevelStats* sCurrLevelStats = NULL;
 
-void stats_get_level_info(u8 levelNum,u8 areaIdx,u32* time,u32* stars,u32* coins,u32* resets){
+void stats_get_level_info(u8 levelNum,u8 areaIdx,u32* time,u32* stars,u32* coins,u32* resets,f64* dist){
 	LevelStats* stats = gPracticeStats.levelStatsList;
 	while (stats!=NULL){
 		if (stats->levelNum==levelNum){
@@ -221,6 +226,7 @@ void stats_get_level_info(u8 levelNum,u8 areaIdx,u32* time,u32* stars,u32* coins
 				*stars += stats->starGrabCount;
 				*coins += stats->coinCount;
 				*resets += stats->levelResetCount;
+				*dist += stats->distanceMoved;
 			}
 		}
 		
@@ -229,7 +235,7 @@ void stats_get_level_info(u8 levelNum,u8 areaIdx,u32* time,u32* stars,u32* coins
 }
 
 void stats_star_grab(void){
-	if (gIsRTA&&!gCurrPlayingReplay){
+	if (gIsRTA&&!gCurrPlayingReplay&&!gCurrDemoInput){
 		++gPracticeStats.starGrabCount;
 		LevelStats* stats = get_or_make_curr_level_stats();
 		++stats->starGrabCount;
@@ -237,18 +243,28 @@ void stats_star_grab(void){
 }
 
 void stats_collect_coins(u32 count){
-	if (gIsRTA&&!gCurrPlayingReplay){
+	if (gIsRTA&&!gCurrPlayingReplay&&!gCurrDemoInput){
 		gPracticeStats.coinCount += count;
 		LevelStats* stats = get_or_make_curr_level_stats();
 		stats->coinCount += count;
 	}
 }
 
+void stats_add_dist(f64 dist){
+	if (gIsRTA&&!gCurrPlayingReplay&&!gCurrDemoInput){
+		gPracticeStats.distanceMoved += dist;
+		LevelStats* stats = get_or_make_curr_level_stats();
+		stats->distanceMoved += dist;
+	}
+}
+
 void stats_level_reset(u8 level,u8 area){
-	++gPracticeStats.levelResetCount;
-	
-	LevelStats* stats = get_or_make_level_stats(level,area);
-	++stats->levelResetCount;
+	//if (!gCurrPlayingReplay&&!gCurrDemoInput){
+		++gPracticeStats.levelResetCount;
+		
+		LevelStats* stats = get_or_make_level_stats(level,area);
+		++stats->levelResetCount;
+	//}
 }
 
 void stats_update(void){
@@ -278,9 +294,11 @@ void stats_update(void){
 	
 	sIsInactive = FALSE;
 	
-	++gInactivityTimer;
-	++gPracticeStats.timePracticing;
-	++sCurrLevelStats->timePracticing;
+	if (!gRenderPracticeMenu){
+		++gInactivityTimer;
+		++gPracticeStats.timePracticing;
+		++sCurrLevelStats->timePracticing;
+	}
 	
 	++sAutosaveTimer;
 	

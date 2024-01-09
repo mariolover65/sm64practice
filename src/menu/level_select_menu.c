@@ -10,6 +10,7 @@
 #include "game/print.h"
 #include "game/save_file.h"
 #include "game/sound_init.h"
+#include "game/practice.h"
 #include "level_table.h"
 #include "seq_ids.h"
 #include "sm64.h"
@@ -172,6 +173,7 @@ int intro_default(void) {
     if (gPlayer1Controller->buttonPressed & START_BUTTON) {
         play_sound(SOUND_MENU_STAR_SOUND, gDefaultSoundArgs);
         level = 100 + gDebugLevelSelect;
+		timer_freeze();
 #ifndef VERSION_JP        
         D_U_801A7C34 = 1;
 #endif
@@ -204,6 +206,7 @@ int intro_game_over(void) {
 int intro_play_its_a_me_mario(void) {
     set_background_music(0, SEQ_SOUND_PLAYER, 0);
     play_sound(SOUND_MENU_COIN_ITS_A_ME_MARIO, gDefaultSoundArgs);
+	practice_game_start();
     return 1;
 }
 

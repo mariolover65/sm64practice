@@ -23,12 +23,6 @@
 #include "text_strings.h"
 #include "types.h"
 #include "macros.h"
-#ifdef BETTERCAMERA
-#include "bettercamera.h"
-#endif
-#ifdef EXT_OPTIONS_MENU
-#include "options_menu.h"
-#endif
 
 #include "practice.h"
 
@@ -942,8 +936,8 @@ void create_dialog_box_with_response(s16 dialog) {
 void reset_dialog_render_state(void) {
     level_set_transition(0, 0);
 
-    gDialogBoxScale = 19.0f;
-    gDialogBoxOpenTimer = 90.0f;
+    gDialogBoxScale = DEFAULT_DIALOG_BOX_SCALE;
+    gDialogBoxOpenTimer = DEFAULT_DIALOG_BOX_ANGLE;
     gDialogBoxState = DIALOG_STATE_OPENING;
     gDialogID = -1;
     gDialogTextPos = 0;
@@ -1491,9 +1485,9 @@ void handle_dialog_text_and_pages(s8 colorMode, struct DialogEntry *dialog, s8 l
 #endif
 
 void render_dialog_triangle_choice(void) {
-    if (gDialogBoxState == DIALOG_STATE_VERTICAL) {
-        handle_menu_scrolling(MENU_SCROLL_HORIZONTAL, &gDialogLineNum, 1, 2);
-    }
+	if (gDialogBoxState == DIALOG_STATE_VERTICAL) {
+		handle_menu_scrolling(MENU_SCROLL_HORIZONTAL, &gDialogLineNum, 1, 2);
+	}
 
     create_dl_translation_matrix(MENU_MTX_NOPUSH, (gDialogLineNum * X_VAL4_1) - X_VAL4_2, Y_VAL4_1 - (gLastDialogLineNum * Y_VAL4_2), 0);
 
@@ -1811,8 +1805,11 @@ void render_dialog_entries(void) {
 		}
 	}
 	
-	if (gFrameAdvance&&gDialogBoxState==DIALOG_STATE_HORIZONTAL){
-		lowerBound = (gDialogScrollOffsetY / 16) + 1;
+	if (gFrameAdvance || gRenderPracticeMenu){
+		if (gDialogBoxState==DIALOG_STATE_HORIZONTAL)
+			lowerBound = (gDialogScrollOffsetY / 16) + 1;
+		else
+			lowerBound = 1;
 	}
 	
     render_dialog_box_type(dialog, dialog->linesPerBox);
@@ -1972,32 +1969,34 @@ void do_cutscene_handler(void) {
 
     gSPDisplayList(gDisplayListHead++, dl_ia_text_end);
 
-    // if the timing variable is less than 5, increment
-    // the fade until we are at full opacity.
-    if (gCutsceneMsgTimer < 5) {
-        gCutsceneMsgFade += 50;
-    }
+	if (!gRenderPracticeMenu&&!gFrameAdvance){
+		// if the timing variable is less than 5, increment
+		// the fade until we are at full opacity.
+		if (gCutsceneMsgTimer < 5) {
+			gCutsceneMsgFade += 50;
+		}
 
-    // if the cutscene frame length + the fade-in counter is
-    // less than the timer, it means we have exceeded the
-    // time that the message is supposed to remain on
-    // screen. if (message_duration = 50) and (msg_timer = 55)
-    // then after the first 5 frames, the message will remain
-    // on screen for another 50 frames until it starts fading.
-    if (gCutsceneMsgDuration + 5 < gCutsceneMsgTimer) {
-        gCutsceneMsgFade -= 50;
-    }
+		// if the cutscene frame length + the fade-in counter is
+		// less than the timer, it means we have exceeded the
+		// time that the message is supposed to remain on
+		// screen. if (message_duration = 50) and (msg_timer = 55)
+		// then after the first 5 frames, the message will remain
+		// on screen for another 50 frames until it starts fading.
+		if (gCutsceneMsgDuration + 5 < gCutsceneMsgTimer) {
+			gCutsceneMsgFade -= 50;
+		}
 
-    // like the first check, it takes 5 frames to fade out, so
-    // perform a + 10 to account for the earlier check (10-5=5).
-    if (gCutsceneMsgDuration + 10 < gCutsceneMsgTimer) {
-        gCutsceneMsgIndex = -1;
-        gCutsceneMsgFade = 0;
-        gCutsceneMsgTimer = 0;
-        return;
-    }
+		// like the first check, it takes 5 frames to fade out, so
+		// perform a + 10 to account for the earlier check (10-5=5).
+		if (gCutsceneMsgDuration + 10 < gCutsceneMsgTimer) {
+			gCutsceneMsgIndex = -1;
+			gCutsceneMsgFade = 0;
+			gCutsceneMsgTimer = 0;
+			return;
+		}
 
-    gCutsceneMsgTimer++;
+		gCutsceneMsgTimer++;
+	}
 }
 
 #if defined(VERSION_JP) || defined(VERSION_SH)
@@ -2057,33 +2056,35 @@ void print_peach_letter_message(void) {
     gDPSetEnvColor(gDisplayListHead++, 200, 80, 120, gCutsceneMsgFade);
     gSPDisplayList(gDisplayListHead++, castle_grounds_seg7_us_dl_0700F2E8);
 #endif
+	
+	if (!gRenderPracticeMenu && !gFrameAdvance){
+		// at the start/end of message, reset the fade.
+		if (gCutsceneMsgTimer == 0) {
+			gCutsceneMsgFade = 0;
+		}
 
-    // at the start/end of message, reset the fade.
-    if (gCutsceneMsgTimer == 0) {
-        gCutsceneMsgFade = 0;
-    }
+		// we're less than 20 increments, so increase the fade.
+		if (gCutsceneMsgTimer < 20) {
+			gCutsceneMsgFade += 10;
+		}
 
-    // we're less than 20 increments, so increase the fade.
-    if (gCutsceneMsgTimer < 20) {
-        gCutsceneMsgFade += 10;
-    }
+		// we're after PEACH_MESSAGE_TIMER increments, so decrease the fade.
+		if (gCutsceneMsgTimer > PEACH_MESSAGE_TIMER) {
+			gCutsceneMsgFade -= 10;
+		}
 
-    // we're after PEACH_MESSAGE_TIMER increments, so decrease the fade.
-    if (gCutsceneMsgTimer > PEACH_MESSAGE_TIMER) {
-        gCutsceneMsgFade -= 10;
-    }
+		// 20 increments after the start of the decrease, we're
+		// back where we are, so reset everything at the end.
+		if (gCutsceneMsgTimer > (PEACH_MESSAGE_TIMER + 20)) {
+			gCutsceneMsgIndex = -1;
+			gCutsceneMsgFade = 0; //! uselessly reset since the next execution will just set it to 0 again.
+			gDialogID = -1;
+			gCutsceneMsgTimer = 0;
+			return; // return to avoid incrementing the timer
+		}
 
-    // 20 increments after the start of the decrease, we're
-    // back where we are, so reset everything at the end.
-    if (gCutsceneMsgTimer > (PEACH_MESSAGE_TIMER + 20)) {
-        gCutsceneMsgIndex = -1;
-        gCutsceneMsgFade = 0; //! uselessly reset since the next execution will just set it to 0 again.
-        gDialogID = -1;
-        gCutsceneMsgTimer = 0;
-        return; // return to avoid incrementing the timer
-    }
-
-    gCutsceneMsgTimer++;
+		gCutsceneMsgTimer++;
+	}
 }
 
 /**
@@ -2142,14 +2143,16 @@ void shade_screen(void) {
     gSPPopMatrix(gDisplayListHead++, G_MTX_MODELVIEW);
 }
 
-void shade_screen_rect(s32 x,s32 y,s32 w,s32 h){
+extern Gfx dl_draw_xlu_rect[];
+
+void shade_screen_rect(s32 x,s32 y,s32 w,s32 h,u8 r,u8 g,u8 b,u8 a){
 	create_dl_translation_matrix(MENU_MTX_PUSH, x, SCREEN_HEIGHT-y, 0);
 
     create_dl_scale_matrix(MENU_MTX_NOPUSH,
-                            (SCREEN_WIDTH / 130.0f) / SCREEN_WIDTH * w, 3.0f / SCREEN_HEIGHT * h, 1.0f);
+                             w, h, 1.0f);
 
-    gDPSetEnvColor(gDisplayListHead++, 0, 0, 0, 110);
-    gSPDisplayList(gDisplayListHead++, dl_draw_text_bg_box);
+    gDPSetEnvColor(gDisplayListHead++, r, g, b, a);
+    gSPDisplayList(gDisplayListHead++, dl_draw_xlu_rect);
     gSPPopMatrix(gDisplayListHead++, G_MTX_MODELVIEW);
 }
 
@@ -2348,8 +2351,8 @@ void render_pause_camera_options(s16 x, s16 y, s8 *index, s16 xIndex) {
     u8 textNormalUpClose[] = { TEXT_NORMAL_UPCLOSE };
     u8 textNormalFixed[] = { TEXT_NORMAL_FIXED };
 #endif
-
-    handle_menu_scrolling(MENU_SCROLL_HORIZONTAL, index, 1, 2);
+	
+	handle_menu_scrolling(MENU_SCROLL_HORIZONTAL, index, 1, 2);
 
     gSPDisplayList(gDisplayListHead++, dl_ia_text_begin);
     gDPSetEnvColor(gDisplayListHead++, 255, 255, 255, gDialogTextAlpha);
@@ -2410,7 +2413,7 @@ void render_pause_course_options(s16 x, s16 y, s8 *index, s16 yIndex) {
     u8 textCameraAngleR[] = { TEXT_CAMERA_ANGLE_R };
 #endif
 
-    handle_menu_scrolling(MENU_SCROLL_VERTICAL, index, 1, 3);
+	handle_menu_scrolling(MENU_SCROLL_VERTICAL, index, 1, 3);
 
     gSPDisplayList(gDisplayListHead++, dl_ia_text_begin);
     gDPSetEnvColor(gDisplayListHead++, 255, 255, 255, gDialogTextAlpha);
@@ -2556,7 +2559,7 @@ void render_pause_castle_main_strings(s16 x, s16 y) {
     }
 #endif
 
-    handle_menu_scrolling(MENU_SCROLL_VERTICAL, &gDialogLineNum, -1, COURSE_STAGES_COUNT + 1);
+	handle_menu_scrolling(MENU_SCROLL_VERTICAL, &gDialogLineNum, -1, COURSE_STAGES_COUNT + 1);
 
     if (gDialogLineNum == COURSE_STAGES_COUNT + 1) {
         gDialogLineNum = 0;
@@ -2625,27 +2628,30 @@ s16 render_pause_courses_and_castle(void) {
 #ifdef VERSION_EU
     gInGameLanguage = eu_get_language();
 #endif
+/*
 #ifdef EXT_OPTIONS_MENU
-    if (optmenu_open == 0) {
-#endif
+    
+#endif*/
     switch (gDialogBoxState) {
         case DIALOG_STATE_OPENING:
-            gDialogLineNum = 1;
-            gDialogTextAlpha = 0;
-            level_set_transition(-1, 0);
-#if defined(VERSION_JP) || defined(VERSION_SH)
-            play_sound(SOUND_MENU_PAUSE, gDefaultSoundArgs);
-#else
-            play_sound(SOUND_MENU_PAUSE_HIGHPRIO, gDefaultSoundArgs);
-#endif
+			if (!gFrameAdvance && !gRenderPracticeMenu){
+				gDialogLineNum = 1;
+				gDialogTextAlpha = 0;
+				level_set_transition(-1, 0);
+	#if defined(VERSION_JP) || defined(VERSION_SH)
+				play_sound(SOUND_MENU_PAUSE, gDefaultSoundArgs);
+	#else
+				play_sound(SOUND_MENU_PAUSE_HIGHPRIO, gDefaultSoundArgs);
+	#endif
 
-            if (gCurrCourseNum >= COURSE_MIN && gCurrCourseNum <= COURSE_MAX) {
-                change_dialog_camera_angle();
-                gDialogBoxState = DIALOG_STATE_VERTICAL;
-            } else {
-                highlight_last_course_complete_stars();
-                gDialogBoxState = DIALOG_STATE_HORIZONTAL;
-            }
+				if (gCurrCourseNum >= COURSE_MIN && gCurrCourseNum <= COURSE_MAX) {
+					change_dialog_camera_angle();
+					gDialogBoxState = DIALOG_STATE_VERTICAL;
+				} else {
+					highlight_last_course_complete_stars();
+					gDialogBoxState = DIALOG_STATE_HORIZONTAL;
+				}
+			}
             break;
         case DIALOG_STATE_VERTICAL:
             shade_screen();
@@ -2708,14 +2714,11 @@ s16 render_pause_courses_and_castle(void) {
 		if (!gFrameAdvance && !gRenderPracticeMenu)
 			gDialogTextAlpha += 25;
     }
+/*
 #ifdef EXT_OPTIONS_MENU
     } else {
-        shade_screen();
-        optmenu_draw();
-    }
-    optmenu_check_buttons();
-    optmenu_draw_prompt();
-#endif
+        
+#endif*/
 
     return 0;
 }
@@ -2988,12 +2991,6 @@ void render_save_confirmation(s16 x, s16 y, s8 *index, s16 sp6e)
         { TEXT_SAVE_AND_QUIT_DE }
     };
 
-    u8 textSaveExitGame[][26] = { // New function to exit game
-        { TEXT_SAVE_EXIT_GAME },
-        { TEXT_SAVE_EXIT_GAME_FR },
-        { TEXT_SAVE_EXIT_GAME_DE }
-    };
-
     u8 textContinueWithoutSaveArr[][27] = {
         { TEXT_CONTINUE_WITHOUT_SAVING },
         { TEXT_CONTINUE_WITHOUT_SAVING_FR },
@@ -3010,7 +3007,7 @@ void render_save_confirmation(s16 x, s16 y, s8 *index, s16 sp6e)
     u8 textContinueWithoutSave[] = { TEXT_CONTINUE_WITHOUT_SAVING };
 #endif
 
-    handle_menu_scrolling(MENU_SCROLL_VERTICAL, index, 1, 3);
+	handle_menu_scrolling(MENU_SCROLL_VERTICAL, index, 1, 3);
 
     gSPDisplayList(gDisplayListHead++, dl_ia_text_begin);
     gDPSetEnvColor(gDisplayListHead++, 255, 255, 255, gDialogTextAlpha);
@@ -3268,6 +3265,14 @@ void convert_text(u8* text){
 				break;
 			case '$':
 				text[i] = 0xF9;
+				break;
+			case '^':
+				// hollow star
+				text[i] = 0xFD;
+				break;
+			case '*':
+				// multiply
+				text[i] = 0xFB;
 				break;
 			default:
 				text[i] = ASCII_TO_DIALOG(text[i]);

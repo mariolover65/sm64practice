@@ -4,7 +4,7 @@
 #include "sm64.h"
 
 #define PRACTICE_STATS_PATH "practice_stats.dat"
-#define STATS_INACTIVITY_THRESHOLD 600
+#define STATS_INACTIVITY_THRESHOLD 300
 #define STATS_AUTOSAVE_THRESHOLD 10000
 
 typedef struct LevelStats LevelStats;
@@ -14,6 +14,7 @@ struct LevelStats {
 	u8 levelNum;
 	u8 areaIdx;
 	
+	f64 distanceMoved;
 	u32 timePracticing;
 	u32 starGrabCount;
 	u32 coinCount;
@@ -39,8 +40,10 @@ void stats_cleanup(void);
 u8 stats_load(const char* path);
 u8 stats_save(const char* path);
 
+void stats_add_dist(f64 dist);
+
 void stats_update(void);
-void stats_get_level_info(u8 levelNum,u8 areaIdx,u32* time,u32* stars,u32* coins,u32* resets);
+void stats_get_level_info(u8 levelNum,u8 areaIdx,u32* time,u32* stars,u32* coins,u32* resets,f64* dist);
 
 void stats_star_grab(void);
 void stats_collect_coins(u32 count);

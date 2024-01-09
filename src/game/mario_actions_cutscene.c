@@ -1814,9 +1814,25 @@ static s32 act_intro_cutscene(struct MarioState *m) {
     return FALSE;
 }
 
+extern u8 gIntroSkipSetValsPrimed;
+
+static s32 act_fake_intro_cutscene(struct MarioState* m){
+	if (m->actionTimer++==0){
+		set_mario_animation(m, MARIO_ANIM_FIRST_PERSON);
+		stop_and_set_height_to_floor(m);
+	} else if (m->actionTimer==8){
+		set_mario_action(m, ACT_IDLE, 0);
+		gIntroSkipSetValsPrimed = 2;
+	}
+	return FALSE;
+}
+
 // jumbo star cutscene: Mario lands after grabbing the jumbo star
 static void jumbo_star_cutscene_falling(struct MarioState *m) {
     if (m->actionState == 0) {
+		if (m->flags & MARIO_WING_CAP){
+			practice_game_win();
+		}
         m->input |= INPUT_A_DOWN;
         m->flags |= (MARIO_WING_CAP | MARIO_CAP_ON_HEAD);
 
@@ -2210,7 +2226,7 @@ static void end_peach_cutscene_dialog_1(struct MarioState *m) {
         case 230:
             set_cutscene_message(160, 227, 0, 30);
 #ifndef VERSION_JP
-            func_8031FFB4(SEQ_PLAYER_LEVEL, 60, 40);
+            seq_player_lower_volume(SEQ_PLAYER_LEVEL, 60, 40);
             play_sound(SOUND_PEACH_MARIO, sEndPeachObj->header.gfx.cameraToObject);
 #endif
             break;
@@ -2647,6 +2663,7 @@ s32 mario_execute_cutscene_action(struct MarioState *m) {
     switch (m->action) {
         case ACT_DISAPPEARED:                cancel = act_disappeared(m);                break;
         case ACT_INTRO_CUTSCENE:             cancel = act_intro_cutscene(m);             break;
+		case ACT_FAKE_INTRO_CUTSCENE:        cancel = act_fake_intro_cutscene(m);        break;
         case ACT_STAR_DANCE_EXIT:            cancel = act_star_dance(m);                 break;
         case ACT_STAR_DANCE_NO_EXIT:         cancel = act_star_dance(m);                 break;
         case ACT_STAR_DANCE_WATER:           cancel = act_star_dance_water(m);           break;

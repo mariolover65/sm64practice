@@ -20,6 +20,7 @@
 #include "game/spawn_object.h"
 #include "sm64.h"
 #include "text_strings.h"
+#include "game/options_menu.h"
 
 #include "game/level_update.h"
 #include "game/practice.h"
@@ -1446,118 +1447,120 @@ void check_main_menu_clicked_buttons(void) {
  * is loaded, and that checks what buttonID is clicked in the main menu.
  */
 void bhv_menu_button_manager_loop(void) {
-    switch (sSelectedButtonID) {
-        case MENU_BUTTON_NONE:
-            check_main_menu_clicked_buttons();
-            break;
-        case MENU_BUTTON_PLAY_FILE_A:
-            load_main_menu_save_file(sMainMenuButtons[MENU_BUTTON_PLAY_FILE_A], 1);
-            break;
-        case MENU_BUTTON_PLAY_FILE_B:
-            load_main_menu_save_file(sMainMenuButtons[MENU_BUTTON_PLAY_FILE_B], 2);
-            break;
-        case MENU_BUTTON_PLAY_FILE_C:
-            load_main_menu_save_file(sMainMenuButtons[MENU_BUTTON_PLAY_FILE_C], 3);
-            break;
-        case MENU_BUTTON_PLAY_FILE_D:
-            load_main_menu_save_file(sMainMenuButtons[MENU_BUTTON_PLAY_FILE_D], 4);
-            break;
-        case MENU_BUTTON_SCORE:
-            check_score_menu_clicked_buttons(sMainMenuButtons[MENU_BUTTON_SCORE]);
-            break;
-        case MENU_BUTTON_COPY:
-            check_copy_menu_clicked_buttons(sMainMenuButtons[MENU_BUTTON_COPY]);
-            break;
-        case MENU_BUTTON_ERASE:
-            check_erase_menu_clicked_buttons(sMainMenuButtons[MENU_BUTTON_ERASE]);
-            break;
+	if (optmenu_open == 0) {
+		switch (sSelectedButtonID) {
+			case MENU_BUTTON_NONE:
+				check_main_menu_clicked_buttons();
+				break;
+			case MENU_BUTTON_PLAY_FILE_A:
+				load_main_menu_save_file(sMainMenuButtons[MENU_BUTTON_PLAY_FILE_A], 1);
+				break;
+			case MENU_BUTTON_PLAY_FILE_B:
+				load_main_menu_save_file(sMainMenuButtons[MENU_BUTTON_PLAY_FILE_B], 2);
+				break;
+			case MENU_BUTTON_PLAY_FILE_C:
+				load_main_menu_save_file(sMainMenuButtons[MENU_BUTTON_PLAY_FILE_C], 3);
+				break;
+			case MENU_BUTTON_PLAY_FILE_D:
+				load_main_menu_save_file(sMainMenuButtons[MENU_BUTTON_PLAY_FILE_D], 4);
+				break;
+			case MENU_BUTTON_SCORE:
+				check_score_menu_clicked_buttons(sMainMenuButtons[MENU_BUTTON_SCORE]);
+				break;
+			case MENU_BUTTON_COPY:
+				check_copy_menu_clicked_buttons(sMainMenuButtons[MENU_BUTTON_COPY]);
+				break;
+			case MENU_BUTTON_ERASE:
+				check_erase_menu_clicked_buttons(sMainMenuButtons[MENU_BUTTON_ERASE]);
+				break;
 
-        case MENU_BUTTON_SCORE_FILE_A:
-            exit_score_file_to_score_menu(sMainMenuButtons[MENU_BUTTON_SCORE_FILE_A], MENU_BUTTON_SCORE);
-            break;
-        case MENU_BUTTON_SCORE_FILE_B:
-            exit_score_file_to_score_menu(sMainMenuButtons[MENU_BUTTON_SCORE_FILE_B], MENU_BUTTON_SCORE);
-            break;
-        case MENU_BUTTON_SCORE_FILE_C:
-            exit_score_file_to_score_menu(sMainMenuButtons[MENU_BUTTON_SCORE_FILE_C], MENU_BUTTON_SCORE);
-            break;
-        case MENU_BUTTON_SCORE_FILE_D:
-            exit_score_file_to_score_menu(sMainMenuButtons[MENU_BUTTON_SCORE_FILE_D], MENU_BUTTON_SCORE);
-            break;
-        case MENU_BUTTON_SCORE_RETURN:
-            return_to_main_menu(MENU_BUTTON_SCORE, sMainMenuButtons[MENU_BUTTON_SCORE_RETURN]);
-            break;
-        case MENU_BUTTON_SCORE_COPY_FILE:
-            load_copy_menu_from_submenu(MENU_BUTTON_SCORE,
-                                        sMainMenuButtons[MENU_BUTTON_SCORE_COPY_FILE]);
-            break;
-        case MENU_BUTTON_SCORE_ERASE_FILE:
-            load_erase_menu_from_submenu(MENU_BUTTON_SCORE,
-                                         sMainMenuButtons[MENU_BUTTON_SCORE_ERASE_FILE]);
-            break;
+			case MENU_BUTTON_SCORE_FILE_A:
+				exit_score_file_to_score_menu(sMainMenuButtons[MENU_BUTTON_SCORE_FILE_A], MENU_BUTTON_SCORE);
+				break;
+			case MENU_BUTTON_SCORE_FILE_B:
+				exit_score_file_to_score_menu(sMainMenuButtons[MENU_BUTTON_SCORE_FILE_B], MENU_BUTTON_SCORE);
+				break;
+			case MENU_BUTTON_SCORE_FILE_C:
+				exit_score_file_to_score_menu(sMainMenuButtons[MENU_BUTTON_SCORE_FILE_C], MENU_BUTTON_SCORE);
+				break;
+			case MENU_BUTTON_SCORE_FILE_D:
+				exit_score_file_to_score_menu(sMainMenuButtons[MENU_BUTTON_SCORE_FILE_D], MENU_BUTTON_SCORE);
+				break;
+			case MENU_BUTTON_SCORE_RETURN:
+				return_to_main_menu(MENU_BUTTON_SCORE, sMainMenuButtons[MENU_BUTTON_SCORE_RETURN]);
+				break;
+			case MENU_BUTTON_SCORE_COPY_FILE:
+				load_copy_menu_from_submenu(MENU_BUTTON_SCORE,
+											sMainMenuButtons[MENU_BUTTON_SCORE_COPY_FILE]);
+				break;
+			case MENU_BUTTON_SCORE_ERASE_FILE:
+				load_erase_menu_from_submenu(MENU_BUTTON_SCORE,
+											 sMainMenuButtons[MENU_BUTTON_SCORE_ERASE_FILE]);
+				break;
 
-        case MENU_BUTTON_COPY_FILE_A:
-            break;
-        case MENU_BUTTON_COPY_FILE_B:
-            break;
-        case MENU_BUTTON_COPY_FILE_C:
-            break;
-        case MENU_BUTTON_COPY_FILE_D:
-            break;
-        case MENU_BUTTON_COPY_RETURN:
-            return_to_main_menu(MENU_BUTTON_COPY, sMainMenuButtons[MENU_BUTTON_COPY_RETURN]);
-            break;
-        case MENU_BUTTON_COPY_CHECK_SCORE:
-            load_score_menu_from_submenu(MENU_BUTTON_COPY,
-                                         sMainMenuButtons[MENU_BUTTON_COPY_CHECK_SCORE]);
-            break;
-        case MENU_BUTTON_COPY_ERASE_FILE:
-            load_erase_menu_from_submenu(MENU_BUTTON_COPY,
-                                         sMainMenuButtons[MENU_BUTTON_COPY_ERASE_FILE]);
-            break;
+			case MENU_BUTTON_COPY_FILE_A:
+				break;
+			case MENU_BUTTON_COPY_FILE_B:
+				break;
+			case MENU_BUTTON_COPY_FILE_C:
+				break;
+			case MENU_BUTTON_COPY_FILE_D:
+				break;
+			case MENU_BUTTON_COPY_RETURN:
+				return_to_main_menu(MENU_BUTTON_COPY, sMainMenuButtons[MENU_BUTTON_COPY_RETURN]);
+				break;
+			case MENU_BUTTON_COPY_CHECK_SCORE:
+				load_score_menu_from_submenu(MENU_BUTTON_COPY,
+											 sMainMenuButtons[MENU_BUTTON_COPY_CHECK_SCORE]);
+				break;
+			case MENU_BUTTON_COPY_ERASE_FILE:
+				load_erase_menu_from_submenu(MENU_BUTTON_COPY,
+											 sMainMenuButtons[MENU_BUTTON_COPY_ERASE_FILE]);
+				break;
 
-        case MENU_BUTTON_ERASE_FILE_A:
-            break;
-        case MENU_BUTTON_ERASE_FILE_B:
-            break;
-        case MENU_BUTTON_ERASE_FILE_C:
-            break;
-        case MENU_BUTTON_ERASE_FILE_D:
-            break;
-        case MENU_BUTTON_ERASE_RETURN:
-            return_to_main_menu(MENU_BUTTON_ERASE, sMainMenuButtons[MENU_BUTTON_ERASE_RETURN]);
-            break;
-        case MENU_BUTTON_ERASE_CHECK_SCORE:
-            load_score_menu_from_submenu(MENU_BUTTON_ERASE,
-                                         sMainMenuButtons[MENU_BUTTON_ERASE_CHECK_SCORE]);
-            break;
-        case MENU_BUTTON_ERASE_COPY_FILE:
-            load_copy_menu_from_submenu(MENU_BUTTON_ERASE,
-                                        sMainMenuButtons[MENU_BUTTON_ERASE_COPY_FILE]);
-            break;
+			case MENU_BUTTON_ERASE_FILE_A:
+				break;
+			case MENU_BUTTON_ERASE_FILE_B:
+				break;
+			case MENU_BUTTON_ERASE_FILE_C:
+				break;
+			case MENU_BUTTON_ERASE_FILE_D:
+				break;
+			case MENU_BUTTON_ERASE_RETURN:
+				return_to_main_menu(MENU_BUTTON_ERASE, sMainMenuButtons[MENU_BUTTON_ERASE_RETURN]);
+				break;
+			case MENU_BUTTON_ERASE_CHECK_SCORE:
+				load_score_menu_from_submenu(MENU_BUTTON_ERASE,
+											 sMainMenuButtons[MENU_BUTTON_ERASE_CHECK_SCORE]);
+				break;
+			case MENU_BUTTON_ERASE_COPY_FILE:
+				load_copy_menu_from_submenu(MENU_BUTTON_ERASE,
+											sMainMenuButtons[MENU_BUTTON_ERASE_COPY_FILE]);
+				break;
 
-        case MENU_BUTTON_SOUND_MODE:
-            check_sound_mode_menu_clicked_buttons(sMainMenuButtons[MENU_BUTTON_SOUND_MODE]);
-            break;
+			case MENU_BUTTON_SOUND_MODE:
+				check_sound_mode_menu_clicked_buttons(sMainMenuButtons[MENU_BUTTON_SOUND_MODE]);
+				break;
 
-        // STEREO, MONO and HEADSET buttons are undefined so they can be selected without
-        // exiting the Options menu, as a result they added a return button
-#ifdef VERSION_EU
-        case MENU_BUTTON_LANGUAGE_RETURN:
-            return_to_main_menu(MENU_BUTTON_SOUND_MODE, sMainMenuButtons[MENU_BUTTON_LANGUAGE_RETURN]);
-            break;
-#else
-        case MENU_BUTTON_STEREO:
-            return_to_main_menu(MENU_BUTTON_SOUND_MODE, sMainMenuButtons[MENU_BUTTON_STEREO]);
-            break;
-        case MENU_BUTTON_MONO:
-            return_to_main_menu(MENU_BUTTON_SOUND_MODE, sMainMenuButtons[MENU_BUTTON_MONO]);
-            break;
-        case MENU_BUTTON_HEADSET:
-            return_to_main_menu(MENU_BUTTON_SOUND_MODE, sMainMenuButtons[MENU_BUTTON_HEADSET]);
-            break;
-#endif
-    }
+			// STEREO, MONO and HEADSET buttons are undefined so they can be selected without
+			// exiting the Options menu, as a result they added a return button
+	#ifdef VERSION_EU
+			case MENU_BUTTON_LANGUAGE_RETURN:
+				return_to_main_menu(MENU_BUTTON_SOUND_MODE, sMainMenuButtons[MENU_BUTTON_LANGUAGE_RETURN]);
+				break;
+	#else
+			case MENU_BUTTON_STEREO:
+				return_to_main_menu(MENU_BUTTON_SOUND_MODE, sMainMenuButtons[MENU_BUTTON_STEREO]);
+				break;
+			case MENU_BUTTON_MONO:
+				return_to_main_menu(MENU_BUTTON_SOUND_MODE, sMainMenuButtons[MENU_BUTTON_MONO]);
+				break;
+			case MENU_BUTTON_HEADSET:
+				return_to_main_menu(MENU_BUTTON_SOUND_MODE, sMainMenuButtons[MENU_BUTTON_HEADSET]);
+				break;
+	#endif
+		}
+	}
 
     sClickPos[0] = -10000;
     sClickPos[1] = -10000;
@@ -1595,6 +1598,7 @@ void handle_cursor_button_input(void) {
             sClickPos[0] = sCursorPos[0];
             sClickPos[1] = sCursorPos[1];
             sCursorClickingTimer = 1;
+			timer_freeze();
         }
     }
 }
@@ -1644,7 +1648,9 @@ void handle_controller_cursor_input(void) {
  * to be usable on the file select.
  */
 void print_menu_cursor(void) {
-    handle_controller_cursor_input();
+	if (!optmenu_open){
+		handle_controller_cursor_input();
+	}
     create_dl_translation_matrix(MENU_MTX_PUSH, sCursorPos[0] + 160.0f - 5.0, sCursorPos[1] + 120.0f - 25.0, 0.0f);
     // Get the right graphic to use for the cursor.
     if (sCursorClickingTimer == 0)
@@ -2776,6 +2782,16 @@ Gfx *geo_file_select_strings_and_menu_cursor(s32 callContext, UNUSED struct Grap
     if (callContext == GEO_CONTEXT_RENDER) {
         print_file_select_strings();
         print_menu_cursor();
+		
+		if (optmenu_open){
+			// optmenu
+			shade_screen();
+			optmenu_draw();
+		}
+		if (!sSelectedFileNum&&!gRenderPracticeMenu){
+			optmenu_check_buttons();
+			optmenu_draw_prompt();
+		}
     }
     return NULL;
 }
@@ -2789,7 +2805,7 @@ s32 lvl_init_menu_values_and_cursor_pos(UNUSED s32 arg, UNUSED s32 unused) {
 #ifdef VERSION_EU
     s8 fileNum;
 #endif
-	gDisableRendering = FALSE;
+	//gDisableRendering = FALSE;
 	gPracticeDest.type = WARP_TYPE_NOT_WARPING;
 	sWarpDest.type = WARP_TYPE_NOT_WARPING;
     sSelectedButtonID = MENU_BUTTON_NONE;
@@ -2853,6 +2869,6 @@ s32 lvl_init_menu_values_and_cursor_pos(UNUSED s32 arg, UNUSED s32 unused) {
  */
 s32 lvl_update_obj_and_load_file_selected(UNUSED s32 arg, UNUSED s32 unused) {
     area_update_objects();
-	gDisableRendering = FALSE;
+	//gDisableRendering = FALSE;
     return sSelectedFileNum;
 }

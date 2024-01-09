@@ -845,7 +845,7 @@ static void geo_process_object(struct Object *node) {
 
         gMatStackIndex--;
         gCurAnimType = ANIM_TYPE_NONE;
-        node->header.gfx.throwMatrix = NULL;
+		node->header.gfx.throwMatrix = NULL;
     }
 }
 

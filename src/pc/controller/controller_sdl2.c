@@ -53,11 +53,11 @@ static u32 last_joybutton = VK_INVALID;
 static inline void controller_add_binds(const u32 mask, const u32 *btns) {
     for (u32 i = 0; i < MAX_BINDS; ++i) {
         if (btns[i] >= VK_BASE_SDL_GAMEPAD && btns[i] <= VK_BASE_SDL_GAMEPAD + VK_SIZE) {
-            if (btns[i] >= VK_BASE_SDL_MOUSE && num_joy_binds < MAX_JOYBINDS) {
+            if (btns[i] >= VK_BASE_SDL_MOUSE && num_mouse_binds < MAX_JOYBINDS) {
                 mouse_binds[num_mouse_binds][0] = btns[i] - VK_BASE_SDL_MOUSE;
                 mouse_binds[num_mouse_binds][1] = mask;
                 ++num_mouse_binds;
-            } else if (num_mouse_binds < MAX_JOYBINDS) {
+            } else if (num_joy_binds < MAX_JOYBINDS) {
                 joy_binds[num_joy_binds][0] = btns[i] - VK_BASE_SDL_GAMEPAD;
                 joy_binds[num_joy_binds][1] = mask;
                 ++num_joy_binds;
@@ -83,6 +83,10 @@ static void controller_sdl_bind(void) {
     controller_add_binds(L_CBUTTONS,   configKeyCLeft);
     controller_add_binds(D_CBUTTONS,   configKeyCDown);
     controller_add_binds(R_CBUTTONS,   configKeyCRight);
+	controller_add_binds(U_JPAD,       configKeyDUp);
+	controller_add_binds(L_JPAD,       configKeyDLeft);
+	controller_add_binds(D_JPAD,       configKeyDDown);
+	controller_add_binds(R_JPAD,       configKeyDRight);
     controller_add_binds(L_TRIG,       configKeyL);
     controller_add_binds(R_TRIG,       configKeyR);
     controller_add_binds(START_BUTTON, configKeyStart);
@@ -232,11 +236,11 @@ static void controller_sdl_read(OSContPad *pad) {
     const u32 xstick = buttons_down & STICK_XMASK;
     const u32 ystick = buttons_down & STICK_YMASK;
     if (xstick == STICK_LEFT)
-        pad->stick_x = -128;
+        pad->stick_x = -127;
     else if (xstick == STICK_RIGHT)
         pad->stick_x = 127;
     if (ystick == STICK_DOWN)
-        pad->stick_y = -128;
+        pad->stick_y = -127;
     else if (ystick == STICK_UP)
         pad->stick_y = 127;
 
@@ -245,19 +249,27 @@ static void controller_sdl_read(OSContPad *pad) {
     if (righty < -0x4000) pad->button |= U_CBUTTONS;
     if (righty > 0x4000) pad->button |= D_CBUTTONS;
 
-    uint32_t magnitude_sq = (uint32_t)(leftx * leftx) + (uint32_t)(lefty * lefty);
-    uint32_t stickDeadzoneActual = configStickDeadzone * DEADZONE_STEP;
-    if (magnitude_sq > (uint32_t)(stickDeadzoneActual * stickDeadzoneActual)) {
-        pad->stick_x = leftx / 0x100;
-        int stick_y = -lefty / 0x100;
-        pad->stick_y = stick_y == 128 ? 127 : stick_y;
+    u32 magnitude_sq = (u32)(leftx * leftx) + (u32)(lefty * lefty);
+    u32 stickDeadzoneActual = configStickDeadzone * DEADZONE_STEP;
+    if (magnitude_sq > (u32)(stickDeadzoneActual * stickDeadzoneActual)) {
+		float mag = sqrtf((float)magnitude_sq);
+		float trueMag = (mag-(float)stickDeadzoneActual);
+		float joyT = trueMag/(float)(32767-stickDeadzoneActual);
+		if (joyT>1.0f) joyT = 1.0f;
+		float joyNormX = (float)leftx/mag;
+		float joyNormY = (float)lefty/mag;
+        //pad->stick_x = leftx / 0x100;
+		pad->stick_x = (s16)(joyNormX*joyT*82.0f);
+		pad->stick_y = (s16)(joyNormY*joyT*-82.0f);
+        //s32 stick_y = -lefty / 0x100;
+        //pad->stick_y = stick_y == 128 ? 127 : stick_y;
     }
 
-    magnitude_sq = (uint32_t)(rightx * rightx) + (uint32_t)(righty * righty);
+    magnitude_sq = (u32)(rightx * rightx) + (u32)(righty * righty);
     stickDeadzoneActual = configStickDeadzone * DEADZONE_STEP;
-    if (magnitude_sq > (uint32_t)(stickDeadzoneActual * stickDeadzoneActual)) {
+    if (magnitude_sq > (u32)(stickDeadzoneActual * stickDeadzoneActual)) {
         pad->ext_stick_x = rightx / 0x100;
-        int stick_y = -righty / 0x100;
+        s32 stick_y = -righty / 0x100;
         pad->ext_stick_y = stick_y == 128 ? 127 : stick_y;
     }
 }

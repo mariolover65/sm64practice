@@ -5,6 +5,11 @@
 
 #include "types.h"
 
+#define PLAY_MODE_NORMAL 0
+#define PLAY_MODE_PAUSED 2
+#define PLAY_MODE_CHANGE_AREA 3
+#define PLAY_MODE_CHANGE_LEVEL 4
+#define PLAY_MODE_FRAME_ADVANCE 5
 
 #define TIMER_CONTROL_SHOW  0
 #define TIMER_CONTROL_START 1
@@ -132,7 +137,5 @@ s32 lvl_init_from_save_file(UNUSED s16 arg0, s32 levelNum);
 s32 lvl_set_current_level(UNUSED s16 arg0, s32 levelNum);
 s32 lvl_play_the_end_screen_sound(UNUSED s16 arg0, UNUSED s32 arg1);
 void basic_update(UNUSED s16 *arg);
-
-void soft_reset(void);
 
 #endif // LEVEL_UPDATE_H

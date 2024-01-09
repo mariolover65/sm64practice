@@ -5,6 +5,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <unistd.h>
+#include <time.h>
 
 #include "cliopts.h"
 #include "fs/fs.h"
@@ -18,9 +19,9 @@ const char *sys_ropaths[] = {
     "!", // executable directory
 #if defined(__linux__) || defined(__unix__)
     // some common UNIX directories for read only stuff
-    "/usr/local/share/sm64pc",
-    "/usr/share/sm64pc",
-    "/opt/sm64pc",
+    "/usr/local/share/sm64practice",
+    "/usr/share/sm64practice",
+    "/opt/sm64practice",
 #endif
     NULL,
 };
@@ -68,9 +69,26 @@ const char *sys_file_name(const char *fpath) {
     return sep + 1;
 }
 
+#define ONE_BILLION 1000000000ULL
+
+static inline uint64_t get_monotonic_time(void){
+	struct timespec ts;
+	
+	clock_gettime(CLOCK_MONOTONIC,&ts);
+	return ts.tv_sec*ONE_BILLION+ts.tv_nsec;
+}
+
 void sys_sleep(const uint64_t us) {
     // TODO: figure out which of the platforms we want to support DOESN'T have usleep()
-    usleep(us);
+    //usleep(us);
+	uint64_t ns = us*1000;
+	uint64_t start = get_monotonic_time();
+	uint64_t diff;
+	while (1){
+		diff = get_monotonic_time()-start;
+		if (diff>ns)
+			break;
+	}
 }
 
 /* this calls a platform-specific impl function after forming the error message */
@@ -83,13 +101,11 @@ void sys_fatal(const char *fmt, ...) {
     va_start(args, fmt);
     vsnprintf(msg, sizeof(msg), fmt, args);
     va_end(args);
-    fflush(stdout); // push all crap out
+    fflush(stdout);
     sys_fatal_impl(msg);
 }
 
 #ifdef HAVE_SDL2
-
-// we can just ask SDL for most of this shit if we have it
 #include <SDL2/SDL.h>
 
 const char *sys_user_path(void) {

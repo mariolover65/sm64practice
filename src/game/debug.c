@@ -320,7 +320,7 @@ void debug_unknown_level_select_check(void) {
 }
 
 void reset_debug_objectinfo(void) {
-    gNumFindFloorMisses = 0;
+    //gNumFindFloorMisses = 0;
     gUnknownWallCount = 0;
     gObjectCounter = 0;
     sDebugStringArrPrinted = FALSE;

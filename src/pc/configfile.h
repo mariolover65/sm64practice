@@ -38,23 +38,17 @@ extern unsigned int configKeyStickUp[];
 extern unsigned int configKeyStickDown[];
 extern unsigned int configKeyStickLeft[];
 extern unsigned int configKeyStickRight[];
+
+extern unsigned int configKeyDUp[];
+extern unsigned int configKeyDDown[];
+extern unsigned int configKeyDLeft[];
+extern unsigned int configKeyDRight[];
+
 extern unsigned int configStickDeadzone;
-extern unsigned int configRumbleStrength;
 #ifdef EXTERNAL_DATA
 extern bool         configPrecacheRes;
 #endif
-#ifdef BETTERCAMERA
-extern unsigned int configCameraXSens;
-extern unsigned int configCameraYSens;
-extern unsigned int configCameraAggr;
-extern unsigned int configCameraPan;
-extern unsigned int configCameraDegrade;
-extern bool         configCameraInvertX;
-extern bool         configCameraInvertY;
-extern bool         configEnableCamera;
-extern bool         configCameraMouse;
-extern bool         configCameraAnalog;
-#endif
+
 extern bool         configHUD;
 extern bool         configSkipIntro;
 extern bool         configFileSelectStart;
@@ -64,20 +58,32 @@ extern bool         configNonstop;
 extern bool         configDiscordRPC;
 #endif
 
+extern bool configShowTimer;
+extern bool configShowControls;
 extern bool configShowPos;
 extern bool configShowHOLP;
 extern bool configShowAngle;
 extern bool configShowVel;
+extern bool configShowSlidingVel;
+extern bool configShowTwirlYaw;
 extern bool configShowMaxHeight;
 extern bool configShowWallkickFrame;
 extern bool configShowWallkickAngle;
 extern bool configShowRNGInfo;
 extern bool configShowBowserInfo;
 extern bool configShowEfficiency;
+extern bool configShowSwimStrength;
+extern bool configShowSwimTrainer;
+extern bool configShowAPressCount;
+extern bool configShowGlobalTimer;
 extern bool configUseGhost;
 extern bool configGhostDistanceFade;
 extern bool configResetMusic;
 extern bool configDisableMusic;
+extern bool configIntroSkipTiming;
+extern bool configNoInvisibleWalls;
+extern bool configDisableA;
+extern bool configYellowStars;
 
 extern u32 configAngleDisplayType;
 extern u32 configPracticeType;

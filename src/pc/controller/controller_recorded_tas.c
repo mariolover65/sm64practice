@@ -5,6 +5,10 @@
 
 static FILE *fp;
 
+#define TAS_VALID_BUTTONS (A_BUTTON   | B_BUTTON   | Z_TRIG     | START_BUTTON | \
+                           R_TRIG     |                                          \
+                           U_CBUTTONS | D_CBUTTONS | L_CBUTTONS | R_CBUTTONS   )
+
 static void tas_init(void) {
     fp = fopen("cont.m64", "rb");
     if (fp != NULL) {
@@ -16,8 +20,14 @@ static void tas_init(void) {
 static void tas_read(OSContPad *pad) {
     if (fp != NULL) {
         uint8_t bytes[4] = {0};
-        fread(bytes, 1, 4, fp);
+		if (!feof(fp))
+			fread(bytes, 1, 4, fp);
+		else {
+			fclose(fp);
+			fp = NULL;
+		}
         pad->button = (bytes[0] << 8) | bytes[1];
+		pad->button &= TAS_VALID_BUTTONS;
         pad->stick_x = bytes[2];
         pad->stick_y = bytes[3];
     }

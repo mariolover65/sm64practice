@@ -32,7 +32,7 @@ struct SnowFlakeVertex {
 };
 
 struct EnvFxParticle *gEnvFxBuffer;
-Vec3i gSnowCylinderLastPos;
+Vec3i gSnowCylinderLastPos = {0,0,0};
 s16 gSnowParticleCount;
 s16 gSnowParticleMaxCount;
 
@@ -85,7 +85,6 @@ s32 envfx_init_snow(s32 mode) {
     }
 
     bzero(gEnvFxBuffer, gSnowParticleMaxCount * sizeof(struct EnvFxParticle));
-
     gEnvFxMode = mode;
     return 1;
 }

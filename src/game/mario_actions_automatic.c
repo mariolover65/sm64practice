@@ -172,7 +172,7 @@ s32 act_holding_pole(struct MarioState *m) {
         }
         play_climbing_sounds(m, 2);
         reset_rumble_timers();
-        func_80320A4C(1, marioObj->oMarioPoleYawVel / 0x100 * 2);
+        set_sound_moving_speed(1, marioObj->oMarioPoleYawVel / 0x100 * 2);
     } else {
         marioObj->oMarioPoleYawVel = 0;
         m->faceAngle[1] -= m->controller->stickX * 16.0f;
@@ -360,7 +360,12 @@ s32 update_hang_moving(struct MarioState *m) {
     m->vel[0] = m->slideVelX;
     m->vel[1] = 0.0f;
     m->vel[2] = m->slideVelZ;
-
+	
+	if (!m->ceil){
+		soft_reset();
+		return FALSE;
+	}
+	
     nextPos[0] = m->pos[0] - m->ceil->normal.y * m->vel[0];
     nextPos[2] = m->pos[2] - m->ceil->normal.y * m->vel[2];
     nextPos[1] = m->pos[1];
@@ -398,7 +403,11 @@ s32 act_start_hanging(struct MarioState *m) {
     if (m->input & INPUT_Z_PRESSED) {
         return set_mario_action(m, ACT_GROUND_POUND, 0);
     }
-
+	
+	if (!m->ceil){
+		soft_reset();
+		return FALSE;
+	}
     //! Crash if Mario's referenced ceiling is NULL (same for other hanging actions)
     if (m->ceil->type != SURFACE_HANGABLE) {
         return set_mario_action(m, ACT_FREEFALL, 0);
@@ -427,7 +436,12 @@ s32 act_hanging(struct MarioState *m) {
     if (m->input & INPUT_Z_PRESSED) {
         return set_mario_action(m, ACT_GROUND_POUND, 0);
     }
-
+	
+	if (!m->ceil){
+		soft_reset();
+		return FALSE;
+	}
+	
     if (m->ceil->type != SURFACE_HANGABLE) {
         return set_mario_action(m, ACT_FREEFALL, 0);
     }
@@ -451,7 +465,12 @@ s32 act_hang_moving(struct MarioState *m) {
     if (m->input & INPUT_Z_PRESSED) {
         return set_mario_action(m, ACT_GROUND_POUND, 0);
     }
-
+	
+	if (!m->ceil){
+		soft_reset();
+		return FALSE;
+	}
+	
     if (m->ceil->type != SURFACE_HANGABLE) {
         return set_mario_action(m, ACT_FREEFALL, 0);
     }

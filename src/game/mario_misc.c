@@ -505,7 +505,7 @@ Gfx *geo_switch_mario_cap_effect(s32 callContext, struct GraphNode *node, UNUSED
     struct MarioBodyState *bodyState = &gBodyStates[switchCase->numCases];
 
     if (callContext == GEO_CONTEXT_RENDER) {
-		if (gCurrentIsGhost){
+		if (gCurrentIsGhost&&gCurrGhostFrame){
 			// vanish cap case
 			switchCase->selectedCase = gCurrGhostFrame->model | 1;
 		} else {
@@ -525,7 +525,7 @@ Gfx *geo_switch_mario_cap_on_off(s32 callContext, struct GraphNode *node, UNUSED
     struct MarioBodyState *bodyState = &gBodyStates[switchCase->numCases];
 	
 	s8 capState;
-	if (gCurrentIsGhost){
+	if (gCurrentIsGhost&&gCurrGhostFrame){
 		capState = gCurrGhostFrame->cap;
 	} else {
 		capState = bodyState->capState;
